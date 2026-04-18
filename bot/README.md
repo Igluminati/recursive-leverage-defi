@@ -10,8 +10,11 @@ Built as part of a master's thesis studying recursive leverage strategies among 
 ## Quick commands
 
 ```bash
-# deploy
+# deploy + transfer ownership to the Safe + verify
 npx hardhat run scripts/flashloan/deploy.js --network base
+
+# dry-run against the local fork (no gas)
+DRY_RUN=1 npx hardhat run scripts/flashloan/deploy.js
 
 # check rates
 npx hardhat run scripts/helpers/checkRates.js --network base
@@ -56,6 +59,10 @@ Uses a Morpho flashloan to build the position **atomically in one transaction**.
 ```
 
 Result: ~100 USDC of yoUSD collateral with 90 USDC debt, funded with only 10 USDC (~10x leverage)
+
+### Unwind, With flashloan (LeverageBot.unwind())
+
+Closes the full position atomically in one transaction, mirroring `execute()` in reverse. The owner calls `unwind()`; the contract flashloans USDC to repay the Morpho debt, withdraws all yoUSD collateral, redeems it back to USDC, and sweeps the proceeds (original 10 USDC plus any accrued yield) to the owner. No second transaction, no external USDC required.
 
 ### Strategy 2 — Without flashloan (executeWithoutFlashloan.js)
 
@@ -103,7 +110,7 @@ bot/
 │   └── ILeverageBot.sol                   interfaces
 ├── scripts/
 │   ├── flashloan/
-│   │   ├── deploy.js                      deploy LeverageBot to Base
+│   │   ├── deploy.js                      deploy + transferOwnership(Safe) + verify
 │   │   ├── execute.js                     run strategy 1 (with flashloan)
 │   │   └── monitor.js                     check position health
 │   ├── executeWithoutFlashloan.js         run strategy 2 (no flashloan)
@@ -112,7 +119,12 @@ bot/
 │       ├── checkRates.js                  check live APY and spread
 │       └── fetchMarketParams.js           fetch Morpho market params
 ├── test/
-│   └── LeverageBot.test.js                integration tests on Base fork
+│   ├── LeverageBot.test.js                             integration tests on Base fork
+│   ├── LeverageBot.transferOwnership.test.js           ownership BDD tests
+│   ├── LeverageBot.unwind.test.js                      unwind BDD tests
+│   ├── LeverageBot.onMorphoFlashLoan.test.js           flashloan callback guards
+│   ├── LeverageBot.rescueToken.test.js                 rescueToken BDD tests
+│   └── LeverageBot.safe.lifecycle.test.js              Safe-impersonated lifecycle
 ├── deployments/                           saved deployment records
 └── hardhat.config.js
 ```
@@ -123,7 +135,8 @@ bot/
 
 | Name | Address |
 |---|---|
-| LeverageBot | deployed via `deploy.js` |
+| LeverageBot | see `deployments/LeverageBot_base_latest.json` |
+| Owner (Gnosis Safe, 1/2) | `0xf9962B0fa1910c90788E35f83Df4F15F9f857fCb` |
 | Morpho Blue | `0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb` |
 | yoUSD vault | `0x0000000f2eB9f69274678c76222B35eEc7588a65` |
 | USDC | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |

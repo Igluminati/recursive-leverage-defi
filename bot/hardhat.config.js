@@ -13,10 +13,17 @@ export default {
         hardhat: {
             forking: {
                 url: process.env.BASE_RPC_URL ?? "",
+                blockNumber: 44_800_000,
             },
+            chainId: 8453,
         },
     },
     mocha: {
         timeout: 60000,
+    },
+    // Etherscan v2 API (unified across chains). Needs only a single api key;
+    // Hardhat picks the right chain automatically from network config.
+    etherscan: {
+        apiKey: process.env.BASESCAN_API_KEY ?? "",
     },
 };

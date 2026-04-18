@@ -18,6 +18,7 @@
 
 # Hardhat coverage reports
 /coverage
+/coverage.json
 
 .env
 
