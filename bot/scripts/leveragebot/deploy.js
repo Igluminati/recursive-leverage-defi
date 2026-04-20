@@ -12,7 +12,7 @@ const SAFE_ADDRESS = "0xf9962B0fa1910c90788E35f83Df4F15F9f857fCb";
 
 // Entry point, invoked below.
 async function main() {
-    const { ethers } = hre;
+    const {ethers} = hre;
     const network = hre.network.name;
     const dryRun = process.env.DRY_RUN === "1";
 
@@ -107,7 +107,7 @@ async function main() {
 
     const deploymentsDir = path.resolve("deployments");
     if (!fs.existsSync(deploymentsDir)) {
-        fs.mkdirSync(deploymentsDir, { recursive: true });
+        fs.mkdirSync(deploymentsDir, {recursive: true});
     }
 
     const timestamp = new Date().toISOString();

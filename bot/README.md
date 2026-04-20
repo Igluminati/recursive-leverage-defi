@@ -10,26 +10,20 @@ Built as part of a master's thesis studying recursive leverage strategies among 
 ## Quick commands
 
 ```bash
-# deploy + transfer ownership to the Safe + verify
-npx hardhat run scripts/flashloan/deploy.js --network base
+# leveragebot deploy + transfer ownership to the Safe + verify
+npx hardhat run scripts/leveragebot/deploy.js --network base
 
 # dry-run against the local fork (no gas)
-DRY_RUN=1 npx hardhat run scripts/flashloan/deploy.js
+DRY_RUN=1 npx hardhat run scripts/leveragebot/deploy.js
 
-# check rates
-npx hardhat run scripts/helpers/checkRates.js --network base
+# execute with leveragebot (requires deployed LeverageBot)
+npx hardhat run scripts/leveragebot/execute.js --network base
 
-# execute with flashloan (requires deployed LeverageBot)
-npx hardhat run scripts/flashloan/execute.js --network base
+# execute loopstrategy
+npx hardhat run scripts/loopstrategy/execute.js --network base
 
-# execute without flashloan
-npx hardhat run scripts/executeWithoutFlashloan.js --network base
-
-# unwind without flashloan (requires enough USDC in wallet to repay debt)
-npx hardhat run scripts/unwindWithoutFlashloan.js --network base
-
-# monitor position
-npx hardhat run scripts/flashloan/monitor.js --network base
+# unwind loopstrategy (requires enough USDC in wallet to repay debt)
+npx hardhat run scripts/loopstrategy/unwind.js --network base
 
 # run tests
 npm run test
@@ -64,7 +58,7 @@ Result: ~100 USDC of yoUSD collateral with 90 USDC debt, funded with only 10 USD
 
 Closes the full position atomically in one transaction, mirroring `execute()` in reverse. The owner calls `unwind()`; the contract flashloans USDC to repay the Morpho debt, withdraws all yoUSD collateral, redeems it back to USDC, and sweeps the proceeds (original 10 USDC plus any accrued yield) to the owner. No second transaction, no external USDC required.
 
-### Strategy 2 — Without flashloan (executeWithoutFlashloan.js)
+### Strategy 2 - Without flashloan (LoopStrategy execute.js)
 
 Uses your own USDC and loops **step by step across multiple transactions**.
 
@@ -76,7 +70,7 @@ Loop 2: deposit borrowed USDC → supply more yoUSD → borrow 88% back
 
 No contract needed  just a script.
 
-### Unwind — Without flashloan (unwindWithoutFlashloan.js)
+### Unwind - Without flashloan (LoopStrategy unwind.js)
 
 Closes the position in three steps across multiple transactions.
 
@@ -109,24 +103,32 @@ bot/
 │   ├── LeverageBot.sol                    flashloan contract (strategy 1)
 │   └── ILeverageBot.sol                   interfaces
 ├── scripts/
-│   ├── flashloan/
+│   ├── leveragebot/
 │   │   ├── deploy.js                      deploy + transferOwnership(Safe) + verify
 │   │   ├── execute.js                     run strategy 1 (with flashloan)
-│   │   └── monitor.js                     check position health
-│   ├── executeWithoutFlashloan.js         run strategy 2 (no flashloan)
-│   ├── unwindWithoutFlashloan.js          close position and redeem to USDC
-│   └── helpers/
-│       ├── checkRates.js                  check live APY and spread
-│       └── fetchMarketParams.js           fetch Morpho market params
+│   │   └── fetchMarketParamsHelper.js     fetch Morpho market params
+│   └── loopstrategy/
+│       ├── execute.js                     run strategy 2 — recursive loop, auto-unwind on failure
+│       └── unwind.js                      close position step-by-step, resumable on failure
+|       |__ monitor.js                     monitors current health of LoopStrategy  
 ├── test/
-│   ├── LeverageBot.test.js                             integration tests on Base fork
-│   ├── LeverageBot.transferOwnership.test.js           ownership BDD tests
-│   ├── LeverageBot.unwind.test.js                      unwind BDD tests
-│   ├── LeverageBot.onMorphoFlashLoan.test.js           flashloan callback guards
-│   ├── LeverageBot.rescueToken.test.js                 rescueToken BDD tests
-│   └── LeverageBot.safe.lifecycle.test.js              Safe-impersonated lifecycle
-├── deployments/                           saved deployment records
-└── hardhat.config.js
+│   ├── leveragebot/
+│   │   ├── fixtures.js                    shared setup, contract handles, impersonation helpers
+│   │   ├── execute.test.js                integration tests on Base fork
+│   │   ├── transferOwnership.test.js      ownership BDD tests
+│   │   ├── unwind.test.js                 unwind BDD tests
+│   │   ├── onMorphoFlashLoan.test.js      flashloan callback guards
+│   │   ├── rescueToken.test.js            rescueToken BDD tests
+│   │   └── gnosis.safe.lifecycle.test.js  Safe-impersonated lifecycle
+│   └── loopstrategy/
+│       ├── fixtures.js                    shared constants, contract handles, runLoop, runUnwind
+│       ├── execute.test.js                loop execution + atomicity (auto-unwind on failure)
+│       └── unwind.test.js                 unwind execution + atomicity (resumability per step)
+├── deployments/
+│   ├── LeverageBot_base_latest.json
+├── hardhat.config.js
+├── package.json
+└── package-lock.json
 ```
 
 ---
@@ -160,6 +162,7 @@ cp .env.example .env
 ```
 BASE_RPC_URL=https://mainnet.base.org
 BASE_PRIVATE_KEY=0xyourprivatekey
+BASESCAN_API_KEY=
 ```
 
 ---
@@ -172,19 +175,6 @@ Tests run against a real Base fork — no stubs, all real Morpho and yoUSD inter
 npm run test
 ```
 
-
----
-
-## Monitor output explained
-
-```
-LTV:      90.00%   your current loan-to-value ratio
-LLTV:     91.5%    liquidation threshold
-Buffer:   1.5%     how much yoUSD can drop before liquidation
-Spread:   1.71%    yoUSD yield minus borrow cost — must stay positive
-```
-
-Run the monitor regularly. If spread goes negative or LTV approaches 91.5% — act immediately.
 
 ---
 

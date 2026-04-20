@@ -1,6 +1,6 @@
 import hardhat from "hardhat";
 
-const { ethers } = hardhat;
+const {ethers} = hardhat;
 
 /**
  * Shared fixtures for the LeverageBot test suite. Deploys a fresh bot, wires
@@ -45,7 +45,7 @@ export async function deployLeverageBotFixture() {
         "function position(bytes32, address) view returns (uint256 supplyShares, uint128 borrowShares, uint128 collateral)",
     ], deployer);
 
-    return { bot, deployer, alice, bob, stranger, usdc, morpho };
+    return {bot, deployer, alice, bob, stranger, usdc, morpho};
 }
 
 // Deploys and funds the deployer with OWN_CAPITAL, ready to approve and execute.

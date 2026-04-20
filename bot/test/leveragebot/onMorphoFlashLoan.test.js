@@ -4,7 +4,7 @@ import {
     MORPHO,
     deployLeverageBotFixture,
     impersonate,
-} from "./fixtures/leverageBot.js";
+} from "./fixtures.js";
 
 const { ethers } = hardhat;
 

@@ -26,4 +26,4 @@ async function main() {
 
 main();
 
-//npx hardhat run scripts/helpers/fetchMarketParams.js --network base
+//npx hardhat run scripts/helpers/fetchMarketParamsHelper.js --network base

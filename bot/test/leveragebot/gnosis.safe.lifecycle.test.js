@@ -1,14 +1,11 @@
-import hardhat from "hardhat";
-import { expect } from "chai";
+import {expect} from "chai";
 import {
     MARKET_ID,
     OWN_CAPITAL,
     deployLeverageBotFixture,
     impersonate,
     setUsdcBalance,
-} from "./fixtures/leverageBot.js";
-
-const { ethers } = hardhat;
+} from "./fixtures.js";
 
 const SAFE_ADDRESS = "0xf9962B0fa1910c90788E35f83Df4F15F9f857fCb";
 
@@ -17,7 +14,7 @@ describe("LeverageBot, Safe-controlled lifecycle", function () {
 
     it("runs deploy -> transferOwnership(Safe) -> execute -> unwind end-to-end with the Safe as sole controller", async function () {
         // Arrange
-        const { bot, deployer, stranger, usdc, morpho } = await deployLeverageBotFixture();
+        const {bot, deployer, stranger, usdc, morpho} = await deployLeverageBotFixture();
         const botAddress = await bot.getAddress();
 
         await bot.connect(deployer).transferOwnership(SAFE_ADDRESS);
