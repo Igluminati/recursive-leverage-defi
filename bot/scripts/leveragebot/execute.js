@@ -69,4 +69,4 @@ main().catch((err) => {
     process.exit(1);
 });
 
-//npx hardhat run scripts/flashloan/execute.js --network base
+//npx hardhat run scripts/leveragebot/execute.js --network base

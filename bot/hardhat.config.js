@@ -21,8 +21,6 @@ export default {
     mocha: {
         timeout: 60000,
     },
-    // Etherscan v2 API (unified across chains). Needs only a single api key;
-    // Hardhat picks the right chain automatically from network config.
     etherscan: {
         apiKey: process.env.BASESCAN_API_KEY ?? "",
     },

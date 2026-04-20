@@ -4,7 +4,7 @@ import {
     OWN_CAPITAL,
     deployLeverageBotFixture,
     setUsdcBalance,
-} from "./fixtures/leverageBot.js";
+} from "./fixtures.js";
 
 describe("LeverageBot, rescueToken", function () {
     this.timeout(120_000);

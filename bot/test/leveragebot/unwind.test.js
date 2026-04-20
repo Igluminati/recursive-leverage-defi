@@ -1,10 +1,10 @@
-import { expect } from "chai";
+import {expect} from "chai";
 import {
     MARKET_ID,
     OWN_CAPITAL,
     deployAndFundOwner,
     deployAndLeverage,
-} from "./fixtures/leverageBot.js";
+} from "./fixtures.js";
 
 describe("LeverageBot, unwind", function () {
     this.timeout(120_000);
@@ -12,7 +12,7 @@ describe("LeverageBot, unwind", function () {
     describe("authorisation", function () {
         it("reverts when called by a non-owner", async function () {
             // Arrange
-            const { bot, stranger } = await deployAndLeverage();
+            const {bot, stranger} = await deployAndLeverage();
 
             // Act + Assert
             await expect(bot.connect(stranger).unwind())
@@ -23,7 +23,7 @@ describe("LeverageBot, unwind", function () {
     describe("preconditions", function () {
         it("reverts when the bot has no open position", async function () {
             // Arrange
-            const { bot, deployer } = await deployAndFundOwner();
+            const {bot, deployer} = await deployAndFundOwner();
 
             // Act + Assert
             await expect(bot.connect(deployer).unwind())
@@ -34,7 +34,7 @@ describe("LeverageBot, unwind", function () {
     describe("happy path", function () {
         it("closes the Morpho debt position (borrowShares become zero)", async function () {
             // Arrange
-            const { bot, deployer, morpho } = await deployAndLeverage();
+            const {bot, deployer, morpho} = await deployAndLeverage();
             const botAddress = await bot.getAddress();
             const [, borrowSharesBefore] = await morpho.position(MARKET_ID, botAddress);
             expect(borrowSharesBefore).to.be.gt(0n);
@@ -49,7 +49,7 @@ describe("LeverageBot, unwind", function () {
 
         it("withdraws all yoUSD collateral from Morpho (collateral becomes zero)", async function () {
             // Arrange
-            const { bot, deployer, morpho } = await deployAndLeverage();
+            const {bot, deployer, morpho} = await deployAndLeverage();
             const botAddress = await bot.getAddress();
             const [, , collateralBefore] = await morpho.position(MARKET_ID, botAddress);
             expect(collateralBefore).to.be.gt(0n);
@@ -64,7 +64,7 @@ describe("LeverageBot, unwind", function () {
 
         it("returns USDC to the owner (at least OWN_CAPITAL minus small slippage)", async function () {
             // Arrange
-            const { bot, deployer, usdc } = await deployAndLeverage();
+            const {bot, deployer, usdc} = await deployAndLeverage();
             const balanceBefore = await usdc.balanceOf(deployer.address);
 
             // Act
@@ -79,7 +79,7 @@ describe("LeverageBot, unwind", function () {
 
         it("leaves zero USDC and zero yoUSD in the contract after unwind", async function () {
             // Arrange
-            const { bot, deployer } = await deployAndLeverage();
+            const {bot, deployer} = await deployAndLeverage();
 
             // Act
             await bot.connect(deployer).unwind();
@@ -91,7 +91,7 @@ describe("LeverageBot, unwind", function () {
 
         it("emits LeverageUnwound with non-zero usdcRepaid, usdcReceived, and netToOwner", async function () {
             // Arrange
-            const { bot, deployer } = await deployAndLeverage();
+            const {bot, deployer} = await deployAndLeverage();
 
             // Act
             const tx = await bot.connect(deployer).unwind();
@@ -121,7 +121,7 @@ describe("LeverageBot, unwind", function () {
     describe("round-trip invariant", function () {
         it("returns the owner to roughly their starting USDC balance after execute + unwind", async function () {
             // Arrange
-            const { bot, deployer, usdc } = await deployAndFundOwner();
+            const {bot, deployer, usdc} = await deployAndFundOwner();
             const startingBalance = await usdc.balanceOf(deployer.address);
             await usdc.approve(await bot.getAddress(), OWN_CAPITAL);
             await bot.execute();

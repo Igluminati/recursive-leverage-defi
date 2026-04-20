@@ -1,5 +1,6 @@
 import hardhat from "hardhat";
 import assert from "assert";
+import {setUsdcBalance} from "./fixtures.js";
 
 const {ethers} = hardhat;
 
@@ -8,20 +9,6 @@ const MORPHO = "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb";
 const MARKET_ID = "0x1a3e69d0109bb1be42b80e11034bb6ee98fc466721f26845dc83b2aa8d979137";
 
 const OWN_CAPITAL = 10n * 1_000_000n; // 10 USDC
-
-//write usdc directly to contract storage
-async function setUsdcBalance(address, amount) {
-    // USDC on Base is a FiatTokenProxy, balances are at slot 9
-    const slot = ethers.solidityPackedKeccak256(
-        ["uint256", "uint256"],
-        [address, 9]
-    );
-    await hardhat.network.provider.send("hardhat_setStorageAt", [
-        USDC,
-        slot,
-        ethers.toBeHex(amount, 32),
-    ]);
-}
 
 describe("LeverageBot", function () {
     let bot, owner, usdc, morpho;
