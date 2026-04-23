@@ -1,0 +1,44 @@
+{
+  "sUSDe": {
+    "name": "Staked USDe",
+    "protocol": "Ethena",
+    "address": "0x9D39A5DE30e57443BfF2A8307A4256c8797A3497",
+    "decimals": 18,
+    "release_date": "2024-02-19",
+    "tvl_usd": 2446559711,
+    "apy_percent": 5.33806,
+    "apy_base": 5.33806,
+    "apy_reward": null,
+    "aave_listed": true,
+    "morpho_listed": true,
+    "scraped_at": "2026-04-22T21:11:31.841511Z"
+  },
+  "sUSDS": {
+    "name": "Staked USDS",
+    "protocol": "Sky",
+    "address": "0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD",
+    "decimals": 18,
+    "release_date": "2024-09-18",
+    "tvl_usd": 5796202691,
+    "apy_percent": 3.65,
+    "apy_base": null,
+    "apy_reward": null,
+    "aave_listed": true,
+    "morpho_listed": true,
+    "scraped_at": "2026-04-22T21:11:31.841511Z"
+  },
+  "syrupUSDC": {
+    "name": "Syrup USDC",
+    "protocol": "Maple Finance",
+    "address": "0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b",
+    "decimals": 6,
+    "release_date": "2024-06-26",
+    "tvl_usd": 48775975,
+    "apy_percent": 0,
+    "apy_base": null,
+    "apy_reward": null,
+    "aave_listed": true,
+    "morpho_listed": true,
+    "scraped_at": "2026-04-22T21:11:31.841511Z"
+  }
+}
