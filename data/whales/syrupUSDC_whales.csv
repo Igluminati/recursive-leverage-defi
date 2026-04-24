@@ -1,0 +1,11 @@
+rank,address,current_balance,total_received,is_eoa,is_looper,is_flashloaner,strategy_type,protocol
+1,0x24385a793f725328d7f6224430e48b4236326717,0.000044,"125,818,430.704286",False,True,False,looper,Morpho
+2,0x4095f064b8d3c3548a3bebfd0bbfd04750e30077,0.000000,"40,810,484.687187",False,True,True,both,Morpho
+3,0xa0cb4e1222d813d6e4de79f2a7a0b7759209588f,0.000000,"20,228,838.063484",False,False,True,flashloaner,Morpho
+4,0xf28dc8b6ded7e45f8cf84b9972487c8e1857a442,0.000000,"6,055,881.851950",False,True,True,both,Morpho
+5,0x59b6c75eeb7dfe417505919c3e5a919b7c1b0773,0.000000,"1,739,755.492036",False,True,True,both,Morpho
+6,0x5705b2eb944e6043485390c313210e52bc00e6cb,0.159467,"129,486.680359",False,False,True,flashloaner,Morpho
+7,0xb58c5040d8a9c3f8f0d7a7bd1d404403d9b08661,0.000000,"123,258.353458",False,True,False,looper,Morpho
+8,0x11f0f6cbf5cb96bd07793b32933b541ccbd82461,0.000533,"35,600.958170",False,False,True,flashloaner,Morpho
+9,0xfb2d570ad6298b7dc910ba4a5f500d40c7c67531,0.000000,104.455925,False,True,False,looper,Morpho
+10,0xb924b657e00c9cf815bd35b4db9030a3f0ad3ba8,0.000000,57.502723,False,True,False,looper,Morpho
