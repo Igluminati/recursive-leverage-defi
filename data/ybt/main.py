@@ -16,8 +16,9 @@ DEFILLAMA_YIELDS_API = "https://yields.llama.fi/pools"
 
 DUNE_QUERIES = {
     "prices": 7359293,
-    "aave_events": 7359302,
+    "aave_sUSDe_events": 7359302,
     "morpho_events": 7359324,
+    "spark_sUSDS_events": 7368610,
 }
 
 
@@ -83,13 +84,17 @@ def main():
     prices_df.to_csv("ybt_prices.csv", index=False)
     print("Saved ybt_prices.csv")
 
-    aave_df = fetch_dune_data(dune, "Aave events", DUNE_QUERIES["aave_events"])
+    aave_df = fetch_dune_data(dune, "Aave sUSDe events", DUNE_QUERIES["aave_sUSDe_events"])
     aave_df.to_csv("aave_events.csv", index=False)
     print("Saved aave_events.csv")
 
     morpho_df = fetch_dune_data(dune, "Morpho events", DUNE_QUERIES["morpho_events"])
     morpho_df.to_csv("morpho_events.csv", index=False)
     print("Saved morpho_events.csv")
+
+    spark_df = fetch_dune_data(dune, "Spark sUSDS events", DUNE_QUERIES["spark_sUSDS_events"])
+    spark_df.to_csv("spark_events.csv", index=False)
+    print("Saved spark_events.csv")
 
 
 if __name__ == "__main__":

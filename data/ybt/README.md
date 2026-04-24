@@ -15,13 +15,26 @@ Collects metadata and historical event data for the three yield-bearing stableco
 | sUSDS       | Sky            | `0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD` |
 | syrupUSDC   | Maple Finance  | `0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b` |
 
-Pipeline:
+### Protocol coverage
+
+| Token     | Aave v3 | Morpho Blue | SparkLend |
+|-----------|---------|-------------|-----------|
+| sUSDe     | Yes     | Yes         | No        |
+| sUSDS     | No      | Yes         | Yes       |
+| syrupUSDC | No      | Yes         | No        |
+
+sUSDS is absent from Aave v3. Sky operates its own native lending protocol (SparkLend)
+and never pursued an Aave listing. syrupUSDC is only active on Morpho Blue.
+
+### Pipeline
+
 1. Load token config from `ybt_metadata.json`
 2. Fetch TVL and APY from DeFiLlama Yields API
 3. Fetch daily prices from Dune Analytics (for depeg monitoring)
-4. Fetch Aave v3 events (supply, withdraw, borrow, repay, liquidation) from Dune Analytics
-5. Fetch Morpho Blue events (supply, withdraw, borrow, repay, liquidation) from Dune Analytics
-6. Output metadata as JSON, prices and events as CSV
+4. Fetch Aave v3 events (sUSDe only) from Dune Analytics
+5. Fetch Morpho Blue events (all 3 tokens) from Dune Analytics
+6. Fetch SparkLend events (sUSDS only) from Dune Analytics
+7. Output metadata as JSON, prices and events as CSV
 
 ---
 
@@ -30,8 +43,9 @@ Pipeline:
 | Data | Dune Query |
 |------|------------|
 | Daily prices | https://dune.com/queries/7359293 |
-| Aave v3 events | https://dune.com/queries/7359302 |
+| Aave v3 events (sUSDe) | https://dune.com/queries/7359302 |
 | Morpho Blue events | https://dune.com/queries/7359324 |
+| SparkLend events (sUSDS) | https://dune.com/queries/7368610 |
 
 ---
 
@@ -45,18 +59,10 @@ SELECT
     evt_tx_hash AS tx_hash,
     "user",
     onBehalfOf AS on_behalf_of,
-    CASE reserve
-        WHEN 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497 THEN 'sUSDe'
-        WHEN 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD THEN 'sUSDS'
-        WHEN 0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b THEN 'syrupUSDC'
-    END AS token,
+    'sUSDe' AS token,
     CAST(amount AS DOUBLE) / 1e18 AS amount
 FROM aave_v3_ethereum.Pool_evt_Supply
-WHERE reserve IN (
-    0x9D39A5DE30e57443BfF2A8307A4256c8797A3497,
-    0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD,
-    0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b
-)
+WHERE reserve = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497
 
 UNION ALL
 
@@ -67,23 +73,55 @@ SELECT
     evt_tx_hash,
     "user",
     "to" AS on_behalf_of,
-    CASE reserve
-        WHEN 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497 THEN 'sUSDe'
-        WHEN 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD THEN 'sUSDS'
-        WHEN 0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b THEN 'syrupUSDC'
-    END,
+    'sUSDe',
     CAST(amount AS DOUBLE) / 1e18
 FROM aave_v3_ethereum.Pool_evt_Withdraw
-WHERE reserve IN (
-    0x9D39A5DE30e57443BfF2A8307A4256c8797A3497,
-    0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD,
-    0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b
-)
+WHERE reserve = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497
 
 -- ... borrow, repay, liquidation events follow same pattern
 
 ORDER BY block_time DESC
 ```
+
+---
+
+## Sample SQL for SparkLend Events -> Dune
+
+```sql
+SELECT 
+    'supply' AS event_type,
+    evt_block_time AS block_time,
+    evt_block_number AS block_number,
+    evt_tx_hash AS tx_hash,
+    "user",
+    onBehalfOf AS on_behalf_of,
+    'sUSDS' AS token,
+    CAST(amount AS DOUBLE) / 1e18 AS amount
+FROM spark_protocol_multichain.pool_evt_supply
+WHERE reserve = 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD
+  AND chain = 'ethereum'
+
+UNION ALL
+
+SELECT 
+    'withdraw' AS event_type,
+    evt_block_time,
+    evt_block_number,
+    evt_tx_hash,
+    "user",
+    "to" AS on_behalf_of,
+    'sUSDS',
+    CAST(amount AS DOUBLE) / 1e18
+FROM spark_protocol_multichain.pool_evt_withdraw
+WHERE reserve = 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD
+  AND chain = 'ethereum'
+
+-- ... borrow, repay, liquidation events follow same pattern
+
+ORDER BY block_time DESC
+```
+
+Note: SparkLend tables use `spark_protocol_multichain` namespace with `chain = 'ethereum'` filter.
 
 ---
 
@@ -166,8 +204,9 @@ uv run main.py
 Output is saved to:
 - `ybt_metadata.json`
 - `ybt_prices.csv`
-- `aave_events.csv`
-- `morpho_events.csv`
+- `aave_events.csv` (sUSDe only)
+- `morpho_events.csv` (all 3 tokens)
+- `spark_events.csv` (sUSDS only)
 
 ---
 
@@ -196,7 +235,7 @@ Output is saved to:
 | `price_low` | Daily low |
 | `price_high` | Daily high |
 
-### aave_events.csv / morpho_events.csv
+### aave_events.csv / morpho_events.csv / spark_events.csv
 
 | Column | Description |
 |--------|-------------|
@@ -233,6 +272,7 @@ ybt/
 ├── main.py               # script
 ├── ybt_metadata.json     # output
 ├── ybt_prices.csv        # output
-├── aave_events.csv       # output
-├── morpho_events.csv     # output
+├── aave_events.csv       # output (sUSDe)
+├── morpho_events.csv     # output (all 3 tokens)
+├── spark_events.csv      # output (sUSDS)
 ```
