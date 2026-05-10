@@ -102,7 +102,6 @@ SparkLend tables are under the `spark_protocol_multichain` namespace in Dune,
 filtered with `chain = 'ethereum'`. In practice only loopers are identified for
 sUSDS on SparkLend, no flashloaners were found.
 
----
 
 ## Setup
 
@@ -136,17 +135,18 @@ Output is saved to `<token_symbol>_<protocol>_whales.csv`
 
 ## Output format
 
-| Column            | Description                                         |
-|-------------------|-----------------------------------------------------|
-| `rank`            | Rank within protocol by `total_received` descending |
-| `address`         | Wallet address                                      |
-| `current_balance` | Current token balance                               |
-| `total_received`  | Lifetime cumulative inflow of token                 |
-| `is_eoa`          | True if EOA, False if smart contract                |
-| `is_looper`       | Supplied collateral + borrowed 3+ times             |
-| `is_flashloaner`  | Executed flashloans in 3+ separate transactions     |
-| `strategy_type`   | `looper`, `flashloaner`, or `both`                  |
-| `protocol`        | `Aave`, `Morpho`, or `Spark`                        |
+| Column              | Description                                                                 |
+|---------------------|-----------------------------------------------------------------------------|
+| `rank`              | Rank within protocol by `total_received` descending                         |
+| `address`           | Wallet address                                                               |
+| `current_balance`   | Current token balance                                                        |
+| `total_received`    | Lifetime cumulative inflow of token                                          |
+| `distinct_funders`  | Number of distinct addresses that sent the token to this address (excl. mints); 0 means self-minted only |
+| `is_eoa`            | True if EOA, False if smart contract                                         |
+| `is_looper`         | Supplied collateral + borrowed 3+ times                                      |
+| `is_flashloaner`    | Executed flashloans in 3+ separate transactions                              |
+| `strategy_type`     | `looper`, `flashloaner`, or `both`                                           |
+| `protocol`          | `Aave`, `Morpho`, or `Spark`                                                 |
 
 ---
 
@@ -158,6 +158,8 @@ Output is saved to `<token_symbol>_<protocol>_whales.csv`
 - In practice all identified whales are smart contracts given the scale and complexity
   of looping strategies — `is_eoa` column distinguishes them
 - Balances may be slightly stale depending on Dune's indexing lag
+- `distinct_funders = 0` indicates all inflows arrived via minting (from the zero address),
+  which is excluded from the count by design; such addresses are self-funded single operators
 
 ---
 
