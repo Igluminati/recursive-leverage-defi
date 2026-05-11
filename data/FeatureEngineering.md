@@ -9,7 +9,7 @@ University of Zurich, 2026
 
 This document explains how we build the wallet-token-day panel and how we define and compute each of the eight features used in the ML pipeline. The panel is the central data structure for all three research questions.
 
-One row in the panel equals one whale, one token, and one calendar day. The panel starts on the date of each whale's first transaction and ends on the date of its last activity, or the data collection cutoff, whichever comes first. All six whales defined in README.md are in scope.
+One row in the panel equals one whale, one token, and one calendar day. The panel starts on the date of each whale's first transaction and ends on the date of its last activity, or the data collection cutoff, whichever comes first. All five whales defined in README.md are in scope.
 
 ---
 
@@ -21,7 +21,7 @@ One row in the panel equals one whale, one token, and one calendar day. The pane
 | The Graph, Morpho Blue | SupplyCollateral, Borrow, Repay, WithdrawCollateral, Liquidate events; borrow rate per market | GraphQL: `https://api.thegraph.com/subgraphs/name/morpho-association/morpho-blue` |
 | The Graph, SparkLend | Same event structure as Aave v3, under the spark_protocol_multichain namespace | GraphQL: `https://api.thegraph.com/subgraphs/name/marsfoundation/sparklend-mainnet` |
 | DeFiLlama Yields API | Daily APY per token (sUSDe, sUSDS, syrupUSDC) | REST: `https://yields.llama.fi/chart/{pool_id}`, already collected by the ybt/ scraper |
-| Dune Analytics | ERC-20 transfer events for cross-checking balances | SQL queries, already used in the whale identification pipeline |
+| Dune Analytics | ERC-20 transfer events for cross-checking balances and loop depth for Gnosis Safe wallets | SQL queries, already used in the whale identification pipeline |
 | Static / manual | Liquidation thresholds per market; automation flags per whale | Hardcoded from Etherscan analysis and protocol documentation |
 
 Each whale pulls from a different GraphQL source depending on which protocol it uses:
@@ -29,11 +29,10 @@ Each whale pulls from a different GraphQL source depending on which protocol it 
 | Whale | Token | Protocol | GraphQL source |
 |-------|-------|----------|---------------|
 | W-1 | sUSDe | Morpho Blue | The Graph, Morpho Blue |
-| W-2 | sUSDe | Aave v3 | The Graph, Aave v3 |
-| W-3 | sUSDS | SparkLend | The Graph, SparkLend |
-| W-4 | sUSDe | Aave v3 | The Graph, Aave v3 |
-| W-5 | sUSDe | Morpho Blue | The Graph, Morpho Blue |
-| W-6 | syrupUSDC | Morpho Blue | The Graph, Morpho Blue |
+| W-2 | sUSDS | SparkLend | The Graph, SparkLend |
+| W-3 | sUSDe | Aave v3 | The Graph, Aave v3 |
+| W-4 | sUSDe | Morpho Blue | The Graph, Morpho Blue |
+| W-5 | syrupUSDC | Morpho Blue | The Graph, Morpho Blue |
 
 ---
 
@@ -112,25 +111,45 @@ How we compute it:
 3. loop_depth for that transaction equals the number of such pairs.
 4. loop_depth for the day equals the maximum across all transactions that day. On days with no transactions we carry forward the previous day's value.
 
-Data comes from The Graph events grouped by tx_hash. For Gnosis Safe wallets (W-2 and W-4) we also need internal transaction traces, explained below.
-
 Protocol-specific notes:
 
-W-5 and W-6 use purpose-built contracts where each Assemble Background call is one explicit loop leg. Loop depth is directly countable from the method name.
+W-4 and W-5 use purpose-built contracts where each Assemble Background call is one explicit loop leg. Loop depth is directly countable from the method name, no trace API needed.
 
-W-1 uses DeFi Saver where each Cast transaction executes one step. We count supply and borrow event pairs within each Cast to get the loop depth.
+W-1 uses DeFi Saver where each Cast transaction executes one step. We count supply and borrow event pairs within each Cast using the Dune decoded event tables, which capture each individual event even when bundled inside a single Cast call.
 
-W-2 and W-4 use Gnosis Safe, which is the most complex case. Each Exec Transaction can bundle multiple DeFi actions into a single on-chain transaction. The Graph event tables return one aggregated result per event type per transaction and do not expose the individual sub-calls inside. To correctly count supply-borrow pairs within a single Safe execution we do the following:
+W-2 uses a fully manual Gnosis Safe on SparkLend. Each Exec Transaction submits one action at a time, so there is no bundling issue. Loop depth increments by one transaction per day as the position is built up.
 
-Step 1: fetch internal traces using the Etherscan Trace API (trace_transaction) or the Tenderly API. This decomposes each Exec Transaction into its internal call tree and exposes each individual call to Aave's supply() and borrow() functions.
+W-3 uses a Gnosis Safe on Aave v3. This is the most complex case because each Exec Transaction can bundle multiple DeFi actions into a single on-chain call. The Graph event tables return one aggregated result per event type per transaction and do not expose the individual sub-calls inside. We handle this using Dune as the primary approach:
 
-Step 2: count sequential (supply, borrow) pairs in the call tree targeting the same asset. Each pair equals one loop leg.
+Primary approach using Dune: count Supply and Borrow events per tx_hash from the Aave v3 decoded event tables. Even when a Safe bundles multiple actions, each internal call to Aave's supply() and borrow() functions emits its own event with its own log index. Dune captures all of them under the same tx_hash, so counting Supply and Borrow events per transaction and taking the minimum gives the number of complete loop legs.
 
-Step 3: take the max loop depth across all transactions on that day.
+```sql
+WITH supply_events AS (
+    SELECT evt_tx_hash, evt_block_time, COUNT(*) AS supply_count
+    FROM aave_v3_ethereum.Pool_evt_Supply
+    WHERE onBehalfOf = 0xea03e659a2e59c3715c6517afe58541be162161a
+    GROUP BY evt_tx_hash, evt_block_time
+),
+borrow_events AS (
+    SELECT evt_tx_hash, COUNT(*) AS borrow_count
+    FROM aave_v3_ethereum.Pool_evt_Borrow
+    WHERE onBehalfOf = 0xea03e659a2e59c3715c6517afe58541be162161a
+    GROUP BY evt_tx_hash
+)
+SELECT
+    s.evt_tx_hash,
+    DATE(s.evt_block_time) AS date,
+    LEAST(s.supply_count, COALESCE(b.borrow_count, 0)) AS loop_depth_tx
+FROM supply_events s
+LEFT JOIN borrow_events b ON s.evt_tx_hash = b.evt_tx_hash
+ORDER BY s.evt_block_time
+```
 
-If the trace APIs are unavailable or rate-limited, we fall back to approximating loop depth from the ratio of total collateral supplied to initial capital deposited on the first day of position construction (loop_depth is roughly total_collateral divided by initial_deposit, rounded to the nearest integer). We note this approximation as a limitation in the thesis.
+Then take the daily max across all transactions.
 
-Difficulty: hard. This is the most complex feature to engineer.
+Fallback if Dune event counts are ambiguous: infer loop depth from the ratio of total collateral supplied to initial capital deposited on the first day of position construction (loop_depth is roughly total_collateral divided by initial_deposit, rounded to the nearest integer). We note this approximation as a limitation in the thesis.
+
+Difficulty: hard. This is the most complex feature to engineer, mainly because of W-3.
 
 ---
 
@@ -147,11 +166,10 @@ Liquidation thresholds by whale:
 | Whale | Protocol | Market | Liquidation threshold |
 |-------|----------|--------|-----------------------|
 | W-1 | Morpho Blue | sUSDe/USDtb | 86% LLTV |
-| W-2 | Aave v3 | sUSDe | 72% LT |
-| W-3 | SparkLend | sUSDS | 77% LT |
-| W-4 | Aave v3 | sUSDe | 72% LT |
-| W-5 | Morpho Blue | sUSDe/PYUSD | 86% LLTV |
-| W-6 | Morpho Blue | syrupUSDC/PYUSD | 86% LLTV |
+| W-2 | SparkLend | sUSDS | 77% LT |
+| W-3 | Aave v3 | sUSDe | 72% LT |
+| W-4 | Morpho Blue | sUSDe/PYUSD | 86% LLTV |
+| W-5 | Morpho Blue | syrupUSDC/PYUSD | 86% LLTV |
 
 Data comes from F1 plus static hardcoded thresholds from protocol documentation.
 
@@ -190,9 +208,9 @@ Borrow rate comes from The Graph per protocol:
 - Aave v3 and SparkLend: the variableBorrowRate field on the Reserve entity, sampled daily.
 - Morpho Blue: the borrowRate field on the Market entity, sampled daily.
 
-One thing to check before starting: W-5 and W-6 borrow PYUSD on Morpho Blue. We need to verify that the Morpho Blue subgraph exposes historical borrowRate for the PYUSD market. If it does not, we reconstruct it from interest accrual events on Dune as a fallback (see the engineering notes section below).
+One thing to check before starting: W-4 and W-5 borrow PYUSD on Morpho Blue. We need to verify that the Morpho Blue subgraph exposes historical borrowRate for the PYUSD market. If it does not, we reconstruct it from interest accrual events on Dune as a fallback (see the engineering notes section below).
 
-Difficulty: moderate. Requires joining DeFiLlama and The Graph data on date, plus the PYUSD availability check.
+Difficulty: moderate. Requires joining DeFiLlama and The Graph data on date, plus the PYUSD availability check for W-4 and W-5.
 
 ---
 
@@ -204,7 +222,7 @@ This is the fraction of the whale's total collateral held on a single protocol v
 protocol_concentration[day] = collateral on primary protocol / total collateral across all protocols
 ```
 
-In our current sample all six whales operate on a single protocol, so this feature equals 1.0 for every whale-day in the panel. It will not help differentiate archetypes in this sample. We keep it for completeness and in case the sample is expanded later. In the ML pipeline it will be dropped or flagged as a zero-variance feature.
+In our current sample all five whales operate on a single protocol, so this feature equals 1.0 for every whale-day in the panel. It will not help differentiate archetypes in this sample. We keep it for completeness and in case the sample is expanded later. In the ML pipeline it will be dropped or flagged as a zero-variance feature.
 
 Data source: static, derived from whale metadata, no event query needed.
 
@@ -226,11 +244,10 @@ Values by whale (constant across all days, set once at panel construction):
 | Whale | Value | Evidence |
 |-------|-------|----------|
 | W-1 | 1 | DeFi Saver Cast method; DeFi Saver Fee Receiver appears in transfers |
-| W-2 | 1 | Gelato: Executor and Relend Network: Deployer are callers |
+| W-2 | 0 | Sole caller is the deployer only, no automation contracts detected |
 | W-3 | 0 | Sole caller is the deployer only, no automation contracts detected |
 | W-4 | 0 | Sole caller is the deployer only, no automation contracts detected |
 | W-5 | 0 | Sole caller is the deployer only, no automation contracts detected |
-| W-6 | 0 | Sole caller is the deployer only, no automation contracts detected |
 
 Data source: static, hardcoded from Etherscan analysis. No pipeline needed.
 
@@ -247,9 +264,9 @@ ever_liquidated   = 1 if any LiquidationCall or Liquidate event exists for this 
 liquidation_count = total number of liquidation events to date
 ```
 
-Data comes from The Graph, the same event stream as F1. We query LiquidationCall on Aave v3 and SparkLend, and Liquidate on Morpho Blue, filtered to the six whale addresses.
+Data comes from The Graph, the same event stream as F1. We query LiquidationCall on Aave v3 and SparkLend, and Liquidate on Morpho Blue, filtered to the five whale addresses.
 
-Based on the Etherscan review none of the six whales appear to have been liquidated. We confirm this programmatically. If confirmed, ever_liquidated equals 0 for all whales and this feature becomes a zero-variance constant like F6. We keep it in the panel for completeness.
+Based on the Etherscan review none of the five whales appear to have been liquidated. We confirm this programmatically. If confirmed, ever_liquidated equals 0 for all whales and this feature becomes a zero-variance constant like F6. We keep it in the panel for completeness.
 
 Difficulty: easy, same query as F1 but filtering on a different event type.
 
@@ -260,7 +277,7 @@ Difficulty: easy, same query as F1 but filtering on a different event type.
 | Feature | Type | Source | Difficulty | RQ1 | RQ2 | RQ3 |
 |---------|------|--------|------------|-----|-----|-----|
 | F1: LTV ratio | time series (float) | The Graph + DeFiLlama | easy | yes | yes | yes |
-| F2: Loop depth | time series (int) | The Graph | hard | yes | yes | yes |
+| F2: Loop depth | time series (int) | The Graph + Dune | hard | yes | yes | yes |
 | F3: Distance to liquidation | time series (float) | derived from F1 + static | easy | yes | yes | yes |
 | F4: Rebalancing events | time series (binary) | The Graph | easy | yes | yes | yes, target |
 | F5: Carry spread | time series (float) | DeFiLlama + The Graph | moderate | yes | yes | yes |
@@ -270,7 +287,7 @@ Difficulty: easy, same query as F1 but filtering on a different event type.
 
 F4 (rebalancing events) is both a feature (using lagged values as inputs) and the prediction target for the RQ3 XGBoost classifier.
 
-F6 and F8 are likely to be constant across all six whales in the current sample and will be excluded from ML model inputs. They stay in the panel for documentation purposes.
+F6 and F8 are likely to be constant across all five whales in the current sample and will be excluded from ML model inputs. They stay in the panel for documentation purposes.
 
 ---
 
@@ -280,7 +297,7 @@ The final panel is saved as a CSV with these columns:
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `whale_id` | string | W-1 through W-6 |
+| `whale_id` | string | W-1 through W-5 |
 | `address` | string | Wallet address |
 | `token` | string | sUSDe, sUSDS, or syrupUSDC |
 | `protocol` | string | Aave, Morpho, or Spark |
@@ -307,13 +324,13 @@ The final panel is saved as a CSV with these columns:
 
 ### Loop depth edge cases
 
-If a whale builds a position atomically in a single transaction with multiple legs, loop depth on day 1 will spike to its maximum and stay stable from there. This is expected for W-5 and W-6.
+If a whale builds a position atomically in a single transaction with multiple legs, loop depth on day 1 will spike to its maximum and stay stable from there. This is expected for W-4 and W-5.
 
-If a whale builds a position iteratively over multiple days (W-2, W-3, W-4), loop depth increments by one per day until the target depth is reached.
+If a whale builds a position iteratively over multiple days (W-2, W-3), loop depth increments by one per day until the target depth is reached.
 
 We forward-fill loop depth only while collateral_balance is greater than 0. After the position is fully closed we reset loop depth to 0.
 
-### PYUSD borrow rate fallback for W-5 and W-6
+### PYUSD borrow rate fallback for W-4 and W-5
 
 If the Morpho Blue subgraph does not expose historical borrowRate for the PYUSD market, we reconstruct it from Dune using AccrueInterest events:
 
@@ -341,20 +358,19 @@ Rebalancing days (F4 = 1) are common for some whales and rare for others. The ex
 
 | Whale | Total days | Rebalancing days | Approximate positive rate |
 |-------|------------|------------------|--------------------------|
-| W-1 | 95 | 53 | 56% |
-| W-2 | 269 | 141 | 52% |
-| W-3 | 548 | 58 | 11% |
-| W-4 | 266 | 257 | 97% |
-| W-5 | 58 | 24 | 41% |
-| W-6 | 63 | 46 | 73% |
+| W-1 | 97 | 53 | 55% |
+| W-2 | 548 | 58 | 11% |
+| W-3 | 268 | 257 | 96% |
+| W-4 | 60 | 24 | 40% |
+| W-5 | 65 | 46 | 71% |
 
-W-4 at 97% is the main problem. If we pool it with W-1 and W-2 as-is, the model will be skewed toward predicting rebalancing on every day. We handle this with three mitigations applied together:
+The RQ3 training set is W-1 and W-3 only, giving us around 310 combined wallet-days. W-3 at 96% positive rate is the main imbalance problem. If we pool it with W-1 as-is, the model will be skewed toward predicting rebalancing on every day. We handle this with three mitigations applied together:
 
-1. Downsample W-4 by randomly sampling its days to reach a roughly 55% positive rate before pooling with W-1 and W-2.
-2. Apply per-sample weights using sample_weight = 1 divided by the whale's positive rate, so W-4 days are further down-weighted even after downsampling.
+1. Downsample W-3 by randomly sampling its days to reach a roughly 55% positive rate before pooling with W-1, bringing it in line with W-1's natural rate.
+2. Apply per-sample weights using sample_weight = 1 divided by the whale's positive rate, so W-3 days are further down-weighted even after downsampling.
 3. Evaluate on F1-score rather than accuracy so the model is not rewarded for always predicting the majority class.
 
-W-3 has been inactive for over a year and its activity happened during a different market regime (2024 versus the 2025 to 2026 period of the training wallets). Lower model performance on W-3 during out-of-sample validation may reflect structural market changes rather than archetype-specific behavior. We acknowledge this as a limitation in the thesis.
+The validation set is W-2, W-4, and W-5. W-2's data is from 2024, which was a different rate environment from the 2025 to 2026 period the training wallets cover. Lower model performance on W-2 during validation may reflect structural market changes rather than archetype-specific behavior. We acknowledge this as a limitation in the thesis.
 
 ---
 
@@ -364,8 +380,8 @@ W-3 has been inactive for over a year and its activity happened during a differe
 |------|-------------|
 | `panel_raw_events.csv` | All raw events per whale before aggregation |
 | `panel_daily.csv` | Final wallet-token-day panel with all 8 features |
-| `panel_train.csv` | W-1 plus W-2 plus W-4 rows for RQ3 training |
-| `panel_validation.csv` | W-3 plus W-5 plus W-6 rows for RQ3 out-of-sample validation |
+| `panel_train.csv` | W-1 plus W-3 rows for RQ3 training |
+| `panel_validation.csv` | W-2 plus W-4 plus W-5 rows for RQ3 out-of-sample validation |
 
 ---
 
