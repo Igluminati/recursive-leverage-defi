@@ -11,14 +11,6 @@ WHALES = {
         "source": "dune",
         "borrow_assets": {"USDtb"},
     },
-    "W-3": {
-        "address": "0xea03e659a2e59c3715c6517afe58541be162161a",
-        "protocol": "aave",
-        "token": "sUSDe",
-        "source": "dune",
-        "collateral_assets": {"sUSDe", "USDe"},
-        "borrow_assets": {"USDC", "USDe"},
-    },
     "W-4": {
         "address": "0x0d4f7b204626e8233c5b42b1269a78e236e9a06b",
         "protocol": "morpho",
@@ -36,10 +28,9 @@ WHALES = {
 }
 
 DUNE_FILES = {
-    "W-1": "data/morpho_w1_events.csv",
-    "W-3": "data/aave_w3_events.csv",
-    "W-4": "data/morpho_w4_events.csv",
-    "W-5": "data/morpho_w5_events.csv",
+    "W-1": "data/morpho/morpho_w1_events.csv",
+    "W-4": "data/morpho/morpho_w4_events.csv",
+    "W-5": "data/morpho/morpho_w5_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}
@@ -54,18 +45,9 @@ FIELDNAMES = [
 
 def build_row(whale_id, meta, event_type, block_number, timestamp, tx_hash, asset, amount):
     if event_type in COLLATERAL_EVENTS:
-        collateral_assets = meta.get("collateral_assets", set())
-        if not collateral_assets:
-            collateral_assets = {meta["token"]}
-        if asset not in collateral_assets:
-            return None
         collateral_token, borrow_token = asset, ""
     elif event_type in DEBT_EVENTS:
-        if asset not in meta["borrow_assets"]:
-            return None
         collateral_token, borrow_token = "", asset
-    else:
-        return None
 
     return {
         "whale_id": whale_id,
@@ -114,7 +96,7 @@ if __name__ == "__main__":
 
     all_events.sort(key=lambda r: (r["whale_id"], str(r["timestamp"])))
 
-    output_path = "data/panel_raw_events.csv"
+    output_path = "data/morpho/panel_raw_events.csv"
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
         writer.writeheader()
@@ -124,9 +106,9 @@ if __name__ == "__main__":
     total_counts = Counter(e["whale_id"] for e in all_events)
     event_counts = Counter((e["whale_id"], e["event_type"]) for e in all_events)
     for whale_id in WHALES:
-        total = total_counts.get(whale_id, 0)
-        supply = event_counts.get((whale_id, "supply"), 0)
-        withdraw = event_counts.get((whale_id, "withdraw"), 0)
-        borrow = event_counts.get((whale_id, "borrow"), 0)
-        repay = event_counts.get((whale_id, "repay"), 0)
+        total = total_counts.get(whale_id)
+        supply = event_counts.get((whale_id, "supply"))
+        withdraw = event_counts.get((whale_id, "withdraw"))
+        borrow = event_counts.get((whale_id, "borrow"))
+        repay = event_counts.get((whale_id, "repay"))
         print(f"{whale_id}: {total} events (supply={supply}, withdraw={withdraw}, borrow={borrow}, repay={repay})")

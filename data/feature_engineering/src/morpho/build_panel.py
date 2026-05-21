@@ -1,7 +1,7 @@
 import pandas as pd
 
-RAW_EVENTS = "data/panel_raw_events.csv"
-OUTPUT = "data/daily_panel.csv"
+RAW_EVENTS = "data/morpho/panel_raw_events.csv"
+OUTPUT = "data/morpho/daily_panel.csv"
 
 
 def parse_timestamps(series):
