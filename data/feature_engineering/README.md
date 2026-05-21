@@ -4,7 +4,7 @@
 
 ```
 collect_events.py → build_panel.py → build_prices.py → build_features.py
-                                                      ↘ build_aave_health_factor.py (W-3, optional)
+                                                      ↘ aave/health_factor.py (W-3, optional)
                                                          → re-runs merge into daily_features.csv
 ```
 
@@ -54,7 +54,7 @@ Output: `data/daily_features.csv`
 Fetches **on-chain Aave v3 health factor** per day for W-3 via `Pool.getUserAccountData` at end-of-day blocks.
 
 ```bash
-uv run src/build_aave_health_factor.py
+uv run src/aave/health_factor.py
 ```
 
 Output: `data/w3_aave_health_factor.csv` (includes `health_factor`, protocol collateral/debt USD, and panel `ltv` for comparison).
