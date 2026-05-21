@@ -13,7 +13,7 @@ TOKEN_ADDRESSES = {
 }
 
 
-def fetch_prices(token, address, start_date, end_date):
+def fetch_prices(address, start_date, end_date):
     start_ts = int(pd.Timestamp(start_date).timestamp())
     span = (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days + 2
 
@@ -40,7 +40,7 @@ def main():
     price_map = {}
     for token in sorted(tokens):
         print(f"  {token}...")
-        price_map[token] = fetch_prices(token, TOKEN_ADDRESSES[token], start_date, end_date)
+        price_map[token] = fetch_prices(TOKEN_ADDRESSES[token], start_date, end_date)
         time.sleep(0.5)
 
     def attach_prices(df, token_col, price_col):
