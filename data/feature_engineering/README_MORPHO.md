@@ -1,4 +1,4 @@
-# Morpho Whale Feature Engineering and Data Collection 
+# Morpho Whales Feature Engineering and Data Collection
 
 A pipeline that tracks large Morpho protocol positions (whales) from raw on-chain events to daily LTV features.
 
@@ -14,7 +14,14 @@ Converts raw events into a daily time series. Cumulates supply/withdraw into a r
 Fetches historical daily prices from DefiLlama for each token and joins them onto the panel. Computes USD values for collateral and borrow balances. Outputs `daily_panel_usd.csv`.
 
 **4. build_features.py**
-Computes LTV (loan-to-value) as `borrow_balance_usd / collateral_balance_usd` per whale per day. Outputs `daily_features.csv`.
+Computes two risk metrics per whale per day and outputs `daily_features.csv`.
+
+- **LTV**  `borrow_balance_usd / collateral_balance_usd`
+- **Health Factor** `(collateral_balance_usd * liquidation_threshold) / borrow_balance_usd`, where liquidation threshold is hardcoded per market from Morpho's market config (0.915 for all three markets). A health factor below 1.0 means the position is eligible for liquidation.
+
+```
+health_factor = (collateral_balance_usd * liquidation_threshold) / borrow_balance_usd
+```
 
 ## Data Flow
 
