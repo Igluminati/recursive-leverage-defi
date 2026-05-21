@@ -1,4 +1,4 @@
-# Morpho Whale Monitoring — Project Overview
+# Morpho Whale Feature Engineering and Data Collection 
 
 A pipeline that tracks large Morpho protocol positions (whales) from raw on-chain events to daily LTV features.
 
