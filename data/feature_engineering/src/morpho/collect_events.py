@@ -7,30 +7,41 @@ WHALES = {
     "W-1": {
         "address": "0x080ccea8654fd4ff80b81e46cff2278689d88fb0",
         "protocol": "morpho",
-        "token": "sUSDe",
-        "source": "dune",
-        "borrow_assets": {"USDtb"},
+        "collateral": "sUSDe",
+        "borrow": "USDtb",
+    },
+    "W-2": {
+        "address": "0x97bb0e08b664f65f05e0cff03b68bc1238b2e21e",
+        "protocol": "morpho",
+        "collateral": "sUSDS",
+        "borrow": "USDT",
+    },
+    "W-3": {
+        "address": "0xcb1effb6f6e531137ccc1508a8d4982e873aee58",
+        "protocol": "morpho",
+        "collateral": "sUSDS",
+        "borrow": "USDT",
     },
     "W-4": {
         "address": "0x0d4f7b204626e8233c5b42b1269a78e236e9a06b",
         "protocol": "morpho",
-        "token": "sUSDe",
-        "source": "dune",
-        "borrow_assets": {"PYUSD"},
+        "collateral": "sUSDe",
+        "borrow": "PYUSD",
     },
     "W-5": {
         "address": "0x24385a793f725328d7f6224430e48b4236326717",
         "protocol": "morpho",
-        "token": "syrupUSDC",
-        "source": "dune",
-        "borrow_assets": {"PYUSD"},
+        "collateral": "syrupUSDC",
+        "borrow": "PYUSD",
     },
 }
 
 DUNE_FILES = {
-    "W-1": "data/morpho/morpho_w1_events.csv",
-    "W-4": "data/morpho/morpho_w4_events.csv",
-    "W-5": "data/morpho/morpho_w5_events.csv",
+    "W-1": "data/morpho/from_dune/morpho_w1_events.csv",
+    "W-2": "data/morpho/from_dune/morpho_w2_events.csv",
+    "W-3": "data/morpho/from_dune/morpho_w3_events.csv",
+    "W-4": "data/morpho/from_dune/morpho_w4_events.csv",
+    "W-5": "data/morpho/from_dune/morpho_w5_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}
@@ -43,11 +54,11 @@ FIELDNAMES = [
 ]
 
 
-def build_row(whale_id, meta, event_type, block_number, timestamp, tx_hash, asset, amount):
+def build_row(whale_id, meta, event_type, block_number, timestamp, tx_hash, amount):
     if event_type in COLLATERAL_EVENTS:
-        collateral_token, borrow_token = asset, ""
-    elif event_type in DEBT_EVENTS:
-        collateral_token, borrow_token = "", asset
+        collateral_token, borrow_token = meta["collateral"], ""
+    else:
+        collateral_token, borrow_token = "", meta["borrow"]
 
     return {
         "whale_id": whale_id,
@@ -76,11 +87,9 @@ def load_from_dune(whale_id, meta):
             block_number=record["block_number"],
             timestamp=record["timestamp"],
             tx_hash=record["tx_hash"],
-            asset=str(record["asset"]).strip(),
             amount=record["amount"],
         )
-        if row:
-            rows.append(row)
+        rows.append(row)
     return rows
 
 

@@ -6,26 +6,41 @@ PANEL = "data/morpho/daily_panel.csv"
 OUTPUT = "data/morpho/daily_panel_usd.csv"
 
 TOKEN_ADDRESSES = {
-    "sUSDe":     "ethereum:0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+    "sUSDe": "ethereum:0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+    "sUSDS": "ethereum:0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD",
     "syrupUSDC": "ethereum:0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b",
-    "USDtb":     "ethereum:0xc139190f447e929f090edeb554d95abb8b18ac1c",
-    "PYUSD":     "ethereum:0x6c3ea9036406852006290770bedfcaba0e23a0e8",
+    "USDtb": "ethereum:0xc139190f447e929f090edeb554d95abb8b18ac1c",
+    "USDT": "ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7",
+    "PYUSD": "ethereum:0x6c3ea9036406852006290770bedfcaba0e23a0e8",
 }
 
 
 def fetch_prices(address, start_date, end_date):
-    start_ts = int(pd.Timestamp(start_date).timestamp())
-    span = (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days + 2
+    CHUNK_DAYS = 365
+    all_prices = []
 
-    response = requests.get(
-        f"https://coins.llama.fi/chart/{address}",
-        params={"start": start_ts, "span": span, "period": "1d"},
-        timeout=30,
-    )
-    response.raise_for_status()
+    chunk_start = pd.Timestamp(start_date)
+    end_ts = pd.Timestamp(end_date)
 
-    prices = response.json()["coins"][address]["prices"]
-    df = pd.DataFrame(prices, columns=["timestamp", "price"])
+    while chunk_start <= end_ts:
+        chunk_end = min(chunk_start + pd.Timedelta(days=CHUNK_DAYS - 1), end_ts)
+        start_ts = int(chunk_start.timestamp())
+        span = (chunk_end - chunk_start).days + 2
+
+        response = requests.get(
+            f"https://coins.llama.fi/chart/{address}",
+            params={"start": start_ts, "span": span, "period": "1d"},
+            timeout=30,
+        )
+        response.raise_for_status()
+
+        prices = response.json()["coins"][address]["prices"]
+        all_prices.extend(prices)
+
+        chunk_start = chunk_end + pd.Timedelta(days=1)
+        time.sleep(0.3)
+
+    df = pd.DataFrame(all_prices, columns=["timestamp", "price"])
     df["date"] = pd.to_datetime(df["timestamp"], unit="s").dt.normalize()
     return df.drop_duplicates("date").set_index("date")["price"].rename("price")
 
