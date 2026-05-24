@@ -1,30 +1,55 @@
-# Aave Whale Feature Engineering and Data Collection
+# Aave Whale Feature Engineering
 
-A pipeline that tracks the W-3 Aave v3 position from on-chain health factor queries.
+A pipeline that tracks Aave v3 positions by replaying Dune events. Same approach as Morpho.
 
 ## Pipeline Steps
 
-**1. health_factor.py**
-Fetches on-chain Aave v3 health factor for W-3 via `Pool.getUserAccountData` at end-of-day blocks. Requires an archive Ethereum RPC endpoint (set `RPC_URL` in `.env`). Outputs `w3_aave_health_factor.csv` with:
+**1. collect_events.py**
+Loads raw events from Dune CSV exports and normalizes them into `panel_raw_events.csv`.
 
-- **health_factor** — on-chain HF from Aave's `getUserAccountData`
-- **total_collateral_usd** — protocol-reported collateral value
-- **total_debt_usd** — protocol-reported debt value
+**2. build_panel.py**
+Replays supply/withdraw/borrow/repay events to build daily collateral and borrow balances per whale. Outputs `daily_panel.csv`.
 
-```
-health_factor = (collateral_value * liquidation_threshold) / debt_value
-```
+**3. build_prices.py**
+Fetches historical token prices from DeFiLlama and converts balances to USD. Outputs `daily_panel_usd.csv`.
 
-Note: Unlike Morpho, we fetch HF directly from Aave rather than calculating from panel data. This is more accurate as it uses Aave's oracle prices and accounts for aToken interest accrual.
+**4. build_features.py**
+Computes risk metrics and behavioral features per whale per day. Outputs `daily_features.csv`.
+
+- **LTV** `borrow_balance_usd / collateral_balance_usd`
+- **Health Factor** `(collateral_balance_usd * liquidation_threshold) / borrow_balance_usd`. Below 1.0 = liquidatable.
+- **Distance to Liquidation** `liquidation_threshold - ltv`. Positive = safe, negative = underwater.
+- **Rebalancing** Binary flag (0/1) indicating whether any event occurred on a given day.
 
 ## Data Flow
 
 ```
-Archive RPC  →  w3_aave_health_factor.csv
+Dune CSV  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd.csv  →  daily_features.csv
 ```
+
+## Dune Queries
+
+| Whale | Query |
+|-------|-------|
+| W-6   | [Aave W-6 Events (sUSDe/USDT)](https://dune.com/queries/7524498) |
 
 ## Whales Tracked
 
-| ID  | Protocol | Collateral     | Borrow       |
-|-----|----------|----------------|--------------|
-| W-3 | Aave v3  | sUSDe + USDe   | USDC + USDe  |
+| ID  | Address       | Protocol | Collateral | Borrow | Strategy |
+|-----|---------------|----------|------------|--------|----------|
+| W-6 | 0x029469ca... | Aave v3  | sUSDe      | USDT   | E-Mode looper |
+
+## Liquidation Threshold
+
+| Market                   | Threshold |
+|--------------------------|-----------|
+| E-Mode sUSDe Stablecoins | 0.92      |
+
+## Features
+
+| Feature           | Description                                                         |
+|-------------------|---------------------------------------------------------------------|
+| `ltv`             | Borrow balance USD / collateral balance USD                         |
+| `health_factor`   | Calculated from panel data. Below 1.0 = liquidatable                |
+| `distance_to_liq` | Liquidation threshold − LTV. Positive = safe, negative = underwater |
+| `rebalancing`     | 1 if any supply/withdraw/borrow/repay event on that day, else 0     |
