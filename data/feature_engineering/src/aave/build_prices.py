@@ -8,11 +8,13 @@ OUTPUT = "data/aave/daily_panel_usd.csv"
 TOKEN_ADDRESSES = {
     "sUSDe": "ethereum:0x9d39a5de30e57443bff2a8307a4256c8797a3497",
     "USDT": "ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7",
+    "USDe": "ethereum:0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
 }
 
 FALLBACK_PRICES = {
     "sUSDe": 1.2,
     "USDT": 1.0,
+    "USDe": 1.0,
 }
 
 
@@ -61,7 +63,7 @@ def main():
             if prices.empty:
                 raise ValueError("No prices returned")
             price_map[token] = prices
-        except Exception as e:
+        except Exception:
             print(f"    Using fallback price for {token}: {FALLBACK_PRICES.get(token, 1.0)}")
             date_range = pd.date_range(start_date, end_date, freq="D")
             price_map[token] = pd.Series(FALLBACK_PRICES.get(token, 1.0), index=date_range, name="price")

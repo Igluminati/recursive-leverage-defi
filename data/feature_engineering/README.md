@@ -3,9 +3,7 @@
 ## Pipeline
 
 ```
-collect_events.py → build_panel.py → build_prices.py → build_features.py
-                                                      ↘ build_aave_health_factor.py (W-3, optional)
-                                                         → re-runs merge into daily_features.csv
+collect_events.py → build_panel.py → build_prices.py → build_features.py → build_rates.py
 ```
 
 ### Step 1: collect_events.py
@@ -25,7 +23,7 @@ collateral_balance[day] = cumsum(supply - withdraw) up to that day
 borrow_balance[day]     = cumsum(borrow - repay) up to that day
 ```
 
-Days with no events inherit the previous day's balance. One row per `(whale_id, date, collateral_token, borrow_token)` combination  W-3 has two collateral tokens (sUSDe and USDe) and two borrow tokens (USDC and USDe), producing 4 rows per day.
+Days with no events inherit the previous day's balance. One row per `(whale_id, date, collateral_token, borrow_token)` combination.
 
 Output: `data/daily_panel.csv`
 
@@ -44,25 +42,30 @@ Aggregation: sum `collateral_balance_usd` across all collateral tokens, sum `bor
 Current features:
 - `collateral_balance_usd` — total USD value of collateral (from events)
 - `borrow_balance_usd` — total USD value of debt (from events)
-- `ltv` — loan-to-value ratio (borrow / collateral), **simplified** (not Aave health factor)
-- `health_factor`, `collateral_balance_usd_aave`, `borrow_balance_usd_aave` — **W-3 only**, after HF script runs
+- `ltv` — loan-to-value ratio (borrow / collateral)
+- `liquidation_threshold` — per-whale liquidation threshold for its market
+- `health_factor` — `(collateral_usd × liquidation_threshold) / borrow_usd`; below 1.0 is liquidatable
+- `distance_to_liq` — `liquidation_threshold - ltv`, headroom before liquidation
+- `loop_depth` — leverage multiple `round(1 / (1 - ltv))`; 0 when there is no open debt
+- `ltv_vol_7d`, `ltv_vol_14d` — rolling standard deviation of LTV
+- `rebal_freq_7d`, `rebal_freq_30d` — rolling count of rebalancing events
+- `days_since_rebalance` — days since the last rebalancing event
+- `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7` — lagged LTV for temporal context
+- `coll_*`, `debt_*` — one-hot collateral and borrow token identity
 
 Output: `data/daily_features.csv`
 
-### Step 4b (W-3 only): build_aave_health_factor.py
+### Step 5: build_rates.py
 
-Fetches **on-chain Aave v3 health factor** per day for W-3 via `Pool.getUserAccountData` at end-of-day blocks.
+Joins daily yield, supply rate and borrow rate series onto `daily_features.csv` and computes the carry spread. YBT APY comes from DefiLlama pools; supply and borrow rates come from Dune exports, matched per whale by market. Updates `daily_features.csv` in place.
 
-```bash
-uv run src/build_aave_health_factor.py
-```
+- `ybt_apy` — annualised yield on the collateral token
+- `supply_rate` — annualised protocol supply rate on the collateral (0 on Morpho Blue, Aave aToken rate otherwise)
+- `borrow_rate` — annualised borrow rate on the debt token
+- `carry_spread` — `ybt_apy + supply_rate - borrow_rate`, the per-loop spread
+- `carry_spread_levered` — `carry_spread * loop_depth`, the spread scaled by recursion
 
-Output: `data/w3_aave_health_factor.csv` (includes `health_factor`, protocol collateral/debt USD, and panel `ltv` for comparison).
-
-Requires an **archive** Ethereum RPC (~198 historical `eth_call`s). Block numbers are cached in `data/w3_eod_block_cache.csv`.
-
-No liquidations occurred for any whale in our event export.
+Output: `data/daily_features.csv`
 
 ## Data notes
-- W-3 supplies both sUSDe and USDe as collateral on Aave
-- For liquidation analysis on W-3, use **health factor**, not panel `ltv` alone
+No liquidations occurred for any whale in our event export.
