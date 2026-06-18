@@ -74,56 +74,24 @@ Difficulty: easy.
 
 ### F2: Loop depth
 
-Loop depth is the number of recursive supply-borrow cycles stacked in the position.
-We estimate it per transaction and then take the daily maximum.
+Loop depth is the leverage multiple of the position: how many times the collateral is
+geared up by recursive looping (supply, borrow, resupply). Rather than counting
+transactions, which conflates activity with leverage and is noisy when a whale splits
+one loop across many small transactions, we read it straight off the daily LTV.
 
 How we compute it:
 
-1. Group all events by `tx_hash`.
-2. Within each transaction, count the number of (SupplyCollateral, Borrow) pairs.
-3. `loop_depth` for the day equals the maximum across all transactions that day.
-4. On days with no transactions we carry forward the previous day's value.
+1. A position looped to a steady LTV reaches leverage `1 / (1 - LTV)` (the geometric
+   limit of resupplying each borrow): 80% LTV is about 5x, 90% about 10x.
+2. `loop_depth[day] = round(1 / (1 - ltv[day]))`.
+3. Days with no open debt are 0.
 
-Protocol-specific notes:
+This is bounded, economically meaningful, and moves per day as the whale levers up or
+unwinds, which is what the RQ3 classifier needs. An earlier transaction-count version
+summed lifetime supply/borrow events and produced impossible values (e.g. 170), which
+is why we moved to the leverage measure.
 
-**W-1 (InstaDApp DSA, Morpho Blue):** each Cast transaction executes one step.
-We count supply and borrow event pairs within each Cast using the Dune decoded
-event tables.
-
-**W-2 (manual Safe, SparkLend):** each Exec Transaction submits one action at a
-time, no bundling. Loop depth increments by one transaction per day as the
-position is built up.
-
-**W-3 (manual Safe, Aave v3):** most complex case. Each Exec Transaction can bundle
-multiple DeFi actions into a single on-chain call. Primary approach uses Dune:
-
-```sql
-WITH supply_events AS (
-    SELECT evt_tx_hash, evt_block_time, COUNT(*) AS supply_count
-    FROM aave_v3_ethereum.Pool_evt_Supply
-    WHERE onBehalfOf = 0xea03e659a2e59c3715c6517afe58541be162161a
-    GROUP BY evt_tx_hash, evt_block_time
-),
-borrow_events AS (
-    SELECT evt_tx_hash, COUNT(*) AS borrow_count
-    FROM aave_v3_ethereum.Pool_evt_Borrow
-    WHERE onBehalfOf = 0xea03e659a2e59c3715c6517afe58541be162161a
-    GROUP BY evt_tx_hash
-)
-SELECT
-    s.evt_tx_hash,
-    DATE(s.evt_block_time) AS date,
-    LEAST(s.supply_count, COALESCE(b.borrow_count, 0)) AS loop_depth_tx
-FROM supply_events s
-LEFT JOIN borrow_events b ON s.evt_tx_hash = b.evt_tx_hash
-ORDER BY s.evt_block_time
-```
-
-**W-4 and W-5 (custom contracts, Morpho Blue):** each transaction is one explicit
-step (Deposit, Borrow, Repay, Withdraw Supply as separate transactions). Loop depth
-is directly countable from the event sequence.
-
-Difficulty: hard.
+Difficulty: easy.
 
 ---
 
@@ -169,13 +137,18 @@ Difficulty: easy.
 ### F5: Carry spread
 
 ```
-carry_spread[day] = ybt_apy[day] minus borrow_rate[day]
+carry_spread[day]         = ybt_apy[day] + supply_rate[day] minus borrow_rate[day]
+carry_spread_levered[day] = carry_spread[day] times loop_depth[day]
 ```
 
-Both expressed as annualised percentages. YBT APY from DeFiLlama. Borrow rate
-from The Graph per protocol (variableBorrowRate for Aave/Spark, borrowRate for
-Morpho). For W-4 and W-5 (PYUSD market) we verify subgraph availability first;
-fallback uses Dune AccrueInterest events if needed.
+All rates expressed as annualised percentages, computed in `build_rates.py`.
+YBT APY comes from DeFiLlama pools (sUSDe, sUSDS, syrupUSDC). `supply_rate` is the
+protocol supply rate earned on the collateral: 0 on Morpho Blue (collateral is not
+lent out) and the Aave v3 sUSDe liquidity rate for the Aave whales. Borrow rate comes
+from Dune: Morpho `AccrueInterest` `prevBorrowRate` matched per whale by market id,
+and the Aave v3 variable rate of each debt token (USDT for W-6, USDe for W-7). The
+levered variant scales the per-loop spread by loop depth to approximate the realised
+spread across the recursive stack.
 
 Difficulty: moderate.
 
@@ -226,7 +199,7 @@ Difficulty: easy.
 | Feature | Type | Source | Difficulty | RQ1 | RQ2 | RQ3 |
 |---------|------|--------|------------|-----|-----|-----|
 | F1: LTV ratio | time series (float) | The Graph + DeFiLlama | easy | yes | yes | yes |
-| F2: Loop depth | time series (int) | The Graph + Dune | hard | yes | yes | yes |
+| F2: Loop depth | time series (int) | panel LTV | easy | yes | yes | yes |
 | F3: Distance to liquidation | time series (float) | derived from F1 + static | easy | yes | yes | yes |
 | F4: Rebalancing events | time series (binary) | The Graph / Dune | easy | yes | yes | yes, target |
 | F5: Carry spread | time series (float) | DeFiLlama + The Graph | moderate | yes | yes | yes |
@@ -255,10 +228,18 @@ The final panel is saved as a CSV with these columns:
 | `borrow_balance` | float | Raw token units (stablecoin) |
 | `borrow_usd` | float | USD value |
 | `ltv` | float | F1, LTV ratio |
-| `loop_depth` | int | F2, loop depth (forward-filled) |
+| `loop_depth` | int | F2, leverage multiple `round(1 / (1 - ltv))`; 0 when there is no open debt |
 | `distance_to_liq` | float | F3, distance to liquidation threshold |
 | `rebalancing` | int | F4, rebalancing event flag (0 or 1) |
+| `ltv_vol_7d` | float | Rolling 7-day standard deviation of LTV |
+| `ltv_vol_14d` | float | Rolling 14-day standard deviation of LTV |
+| `rebal_freq_7d` | int | Rolling 7-day count of rebalancing events |
+| `rebal_freq_30d` | int | Rolling 30-day count of rebalancing events |
+| `days_since_rebalance` | int | Days since the last rebalancing event within the open position |
+| `ltv_lag_1` / `ltv_lag_3` / `ltv_lag_7` | float | LTV lagged by 1, 3, and 7 days |
+| `coll_*` / `debt_*` | int | One-hot identity of collateral and borrow token |
 | `carry_spread` | float | F5, annualised carry spread in percent |
+| `carry_spread_levered` | float | F5, carry spread times loop depth |
 | `protocol_concentration` | float | F6, always 1.0 in current sample |
 | `ever_liquidated` | int | F8, liquidation history flag (0 or 1) |
 | `ybt_apy` | float | Raw YBT APY from DeFiLlama in percent |
@@ -272,13 +253,10 @@ The final panel is saved as a CSV with these columns:
 
 ### Loop depth edge cases
 
-W-4 and W-5 build positions step by step across multiple transactions — loop depth
-increments by one each time a Deposit+Borrow pair is added. W-1 also operates
-step by step but each Cast transaction is one action (supply OR borrow), so pairs
-must be inferred from adjacent events.
-
-We forward-fill loop depth only while `collateral_balance > 0`. After the position
-is fully closed we reset loop depth to 0.
+Loop depth is derived from daily LTV, so it needs no per-whale transaction parsing: a
+position at 90% LTV reads as about 10x whether it was built in one bundled transaction
+or many small ones. We set loop depth to 0 on days with no open debt (LTV missing or
+borrow balance near 0), and clip extreme LTV so the multiple stays finite.
 
 ### PYUSD borrow rate fallback for W-4 and W-5
 
@@ -312,6 +290,35 @@ W-3 at 96% positive rate is the main imbalance problem. Mitigations:
 
 ---
 
+## Clustering granularity for RQ1
+
+The unit of observation fed to HDBSCAN is the **whale-day**, not the whale.
+
+We only have seven whales (W-1..W-5 on Morpho, W-6 and W-7 on Aave). Clustering at the
+whale level gives seven points, which is far below the density HDBSCAN needs: it
+would collapse to a single cluster or label everything as noise, and no cluster
+validation (stability, silhouette) would be meaningful. Aggregating to one row
+per whale also discards the within-whale variation that actually defines a
+strategy, a whale that holds a flat 85% LTV looks identical to one oscillating
+60-90% once you average it away.
+
+The whale-day panel has ~660 rows, enough for HDBSCAN to find density structure.
+Clusters then represent recurring behavioural states (for example calm high-LTV
+holding versus active rebalancing), and an archetype for each whale is recovered
+by aggregating its distribution of day-level cluster memberships. This is also
+consistent with RQ3, which predicts stressed states at the whale-day level on
+the same panel.
+
+Two known biases and their mitigations:
+- Whale-days within one whale are autocorrelated, so persistence can masquerade
+  as structure; we standardise features and treat clusters as states, then roll
+  them up to whale level rather than reading day clusters as archetypes directly.
+- Whale-day counts are uneven (W-3 has 268 days, W-4 has 60), so a single whale
+  can dominate; we apply per-whale sample weights (1 / n_days) or downsample
+  before clustering.
+
+---
+
 ## Output files
 
 | File | Description |
@@ -333,7 +340,7 @@ feature_engineering/
 ├── src/
 │   ├── collect_events.py       # The Graph queries for W-2 and W-3; merges Dune CSVs for W-1/W-4/W-5
 │   ├── build_panel.py          # Reconstruct daily balances, join features
-│   ├── compute_loop_depth.py   # Transaction-level loop counting (F2)
+│   ├── compute_loop_depth.py   # Leverage multiple round(1/(1-ltv)) (F2)
 │   ├── fetch_apy.py            # DeFiLlama APY fetch
 │   └── fetch_borrow_rates.py   # The Graph borrow rate queries per protocol
 ├── data/
