@@ -3,6 +3,7 @@ import requests
 
 INPUT = "data/morpho/daily_features.csv"
 BORROW_RATES = "data/morpho/from_dune/morpho_borrow_rates.csv"
+SUPPLY_RATES = "data/morpho/morpho_supply_rates.csv"
 RATE_COLUMNS = ["ybt_apy", "supply_rate", "borrow_rate", "carry_spread", "carry_spread_levered"]
 
 APY_POOLS = {
@@ -43,19 +44,30 @@ def main():
 
     rates = pd.read_csv(BORROW_RATES, parse_dates=["date"])[["date", "market_id", "borrow_rate"]]
     df["market_id"] = df["whale_id"].map(WHALE_MARKETS)
-    df = df.merge(rates, on=["date", "market_id"], how="left").drop(columns=["market_id"])
+    df = df.merge(rates, on=["date", "market_id"], how="left")
+
+    supply = pd.read_csv(SUPPLY_RATES, parse_dates=["date"])[["date", "market_id", "supply_apy_pct"]]
+    supply = supply.rename(columns={"supply_apy_pct": "supply_rate"})
+
+    df = df.merge(supply, on=["date", "market_id"], how="left")
+
+    df = df.drop(columns=["market_id"])
 
     keys = ["whale_id", "collateral_token", "borrow_token"]
     df = df.sort_values(keys + ["date"])
-    df[["ybt_apy", "borrow_rate"]] = df.groupby(keys)[["ybt_apy", "borrow_rate"]].ffill()
-    df["supply_rate"] = 0.0
+
+    df[["ybt_apy", "borrow_rate", "supply_rate"]] = (
+        df.groupby(keys)[["ybt_apy", "borrow_rate", "supply_rate"]].ffill()
+    )
+    df["supply_rate"] = df["supply_rate"].fillna(0.0)
+
     df["carry_spread"] = df["ybt_apy"] + df["supply_rate"] - df["borrow_rate"]
     df["carry_spread_levered"] = df["carry_spread"] * df["loop_depth"]
     df = df.sort_values(["whale_id", "date"]).reset_index(drop=True)
 
     df.to_csv(INPUT, index=False)
     print(f"Saved {len(df)} rows to {INPUT}")
-    print(df.groupby("whale_id")[["ybt_apy", "borrow_rate", "carry_spread"]].mean().round(3).to_string())
+    print(df.groupby("whale_id")[["ybt_apy", "supply_rate", "borrow_rate", "carry_spread"]].mean().round(3).to_string())
 
 
 if __name__ == "__main__":
