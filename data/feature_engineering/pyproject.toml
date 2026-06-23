@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.2",
-    "numpy>=1.26",
+    "numpy<2.0",
     "requests>=2.32",
     "python-dotenv>=1.0",
     "dune-client>=1.7",
@@ -15,7 +15,7 @@ dependencies = [
     "ipykernel>=6.29",
     "scikit-learn>=1.5",
     "xgboost>=2.0",
-    "shap>=0.45",
+    "shap>=0.47.0",
     "matplotlib>=3.9",
     "seaborn>=0.13",
 ]
