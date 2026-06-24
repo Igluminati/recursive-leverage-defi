@@ -79,6 +79,27 @@ This folder contains three Jupyter notebooks that cluster whale-day behaviour to
 
 ---
 
+### `04_stressed_by_archetype.ipynb` — Stress by Archetype (RQ1/RQ2 ↔ RQ3)
+**What it does:**
+- Joins the supervised `stressed_state` label (from `../whale-risk-supervised/whale_features_labeled.csv`) onto the labelled panel on `whale_id` and `date` (all 457 days match)
+- Reports stressed share per archetype on two measures: the per-whale model label and an absolute health-factor cut-off
+- Adopts the absolute measure (`stressed_abs`, health factor < 1.05) as the primary cross-archetype risk measure
+
+**Stressed share by archetype:**
+
+| Archetype | Days | Per-whale label % | Absolute (HF < 1.05) % |
+|---|---|---|---|
+| extreme leverage | 77 | 31.2 | 100.0 |
+| high-LTV hold | 235 | 35.3 | 91.9 |
+| moderate leverage | 122 | 14.8 | 0.0 |
+| idle / outlier | 23 | 4.3 | 4.3 |
+
+**Key finding:** Risk grades with leverage. On the absolute measure extreme leverage is the most dangerous mode. The per-whale label understates extreme leverage because it is almost entirely one always-maxed whale (W-2), so a single shared cut-off is the fairer comparison between archetypes. The clusters were built without the stress label, so the agreement is an independent cross-check.
+
+**Output:** `panel_archetypes_stressed.csv` (adds `stressed_abs`)
+
+---
+
 ## Key Design Decisions
 
 **Why cluster whale-days, not whales?**
@@ -185,7 +206,7 @@ Moderate leverage is visually split on PCA (W-4/W-5 core vs W-3 partial-unwind d
 
 ## Next Steps
 
-- Join `stressed_state` from supervised pipeline (`whale_features_labeled.csv`) → stressed % by archetype and within moderate sub-groups
+- Done: stressed % by archetype, see `04_stressed_by_archetype.ipynb` (on a shared health-factor cut-off: extreme 100%, high-LTV hold 92%, moderate 0%, idle 4%; risk grades with leverage)
 - Split moderate leverage post-hoc (e.g. LTV &lt; 0.6 vs ≥ 0.6) to separate W-3 light-leverage days from W-4/W-5 conservative loopers
 - Optional: relabel or sub-cluster W-3 transitional days currently split across moderate, high-LTV hold, and idle
 - Paper: pair RQ1/RQ2 archetype table with RQ3 supervised models (rebalancing vs stress mechanisms)
