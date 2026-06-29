@@ -70,6 +70,24 @@ WHALES = {
         "collateral": "sUSDe",
         "borrow": "DAI",
     },
+    "W-12": {
+        "address": "0x9bcb2ee24bd11046c0dcdfebd608eeb360a64495",
+        "protocol": "morpho",
+        "collateral": "sUSDS",
+        "borrow": "USDT",
+    },
+    "W-13": {
+        "address": "0x206777f4396817398ee61e7ac5e62af311e79836",
+        "protocol": "morpho",
+        "collateral": "sUSDS",
+        "borrow": "USDT",
+    },
+    "W-14": {
+        "address": "0xc05855cbe2a68f9a28a4d85a3a497ebe3adc9a1c",
+        "protocol": "morpho",
+        "collateral": "sUSDS",
+        "borrow": "USDT",
+    },
 }
 
 DUNE_FILES = {
@@ -84,6 +102,9 @@ DUNE_FILES = {
     "W-9": "data/morpho/from_dune/morpho_w9_events.csv",
     "W-10": "data/morpho/from_dune/morpho_w10_events.csv",
     "W-11": "data/morpho/from_dune/morpho_w11_events.csv",
+    "W-12": "data/morpho/from_dune/morpho_w12_events.csv",
+    "W-13": "data/morpho/from_dune/morpho_w13_events.csv",
+    "W-14": "data/morpho/from_dune/morpho_w14_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}
