@@ -12,6 +12,7 @@ TOKEN_ADDRESSES = {
     "USDtb": "ethereum:0xc139190f447e929f090edeb554d95abb8b18ac1c",
     "USDT": "ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7",
     "PYUSD": "ethereum:0x6c3ea9036406852006290770bedfcaba0e23a0e8",
+    "DAI": "ethereum:0x6b175474e89094c44da98b954eedeac495271d0f",
 }
 
 

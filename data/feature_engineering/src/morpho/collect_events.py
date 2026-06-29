@@ -46,6 +46,30 @@ WHALES = {
         "collateral": "sUSDe",
         "borrow": "PYUSD",
     },
+    "W-8": {
+        "address": "0x218b5b98805ad5193432999406e17bceb51770aa",
+        "protocol": "morpho",
+        "collateral": "sUSDe",
+        "borrow": "DAI",
+    },
+    "W-9": {
+        "address": "0x309e161a7056610f0af12c608b3a31f0ffbb146c",
+        "protocol": "morpho",
+        "collateral": "sUSDe",
+        "borrow": "DAI",
+    },
+    "W-10": {
+        "address": "0x3363aca0a6bd542d146408246b5d1e3743b977d6",
+        "protocol": "morpho",
+        "collateral": "sUSDe",
+        "borrow": "DAI",
+    },
+    "W-11": {
+        "address": "0xb48ac9c5585e5f3c88c63cf9bcbaedc921f76df2",
+        "protocol": "morpho",
+        "collateral": "sUSDe",
+        "borrow": "DAI",
+    },
 }
 
 DUNE_FILES = {
@@ -56,6 +80,10 @@ DUNE_FILES = {
     "W-5": "data/morpho/from_dune/morpho_w5_events.csv",
     "W-6": "data/morpho/from_dune/morpho_w6_events.csv",
     "W-7": "data/morpho/from_dune/morpho_w7_events.csv",
+    "W-8": "data/morpho/from_dune/morpho_w8_events.csv",
+    "W-9": "data/morpho/from_dune/morpho_w9_events.csv",
+    "W-10": "data/morpho/from_dune/morpho_w10_events.csv",
+    "W-11": "data/morpho/from_dune/morpho_w11_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}
