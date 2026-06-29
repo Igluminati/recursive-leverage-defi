@@ -34,6 +34,12 @@ WHALES = {
         "collateral": "syrupUSDC",
         "borrow": "PYUSD",
     },
+    "W-6": {
+        "address": "0xfafc2c5f6a0d05718f3e50d0765a79fc69cdde13",
+        "protocol": "morpho",
+        "collateral": "sUSDs",
+        "borrow": "USDT",
+    }
 }
 
 DUNE_FILES = {
@@ -42,6 +48,7 @@ DUNE_FILES = {
     "W-3": "data/morpho/from_dune/morpho_w3_events.csv",
     "W-4": "data/morpho/from_dune/morpho_w4_events.csv",
     "W-5": "data/morpho/from_dune/morpho_w5_events.csv",
+    "W-6": "data/morpho/from_dune/morpho_w6_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}
