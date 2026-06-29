@@ -37,7 +37,7 @@ WHALES = {
     "W-6": {
         "address": "0xfafc2c5f6a0d05718f3e50d0765a79fc69cdde13",
         "protocol": "morpho",
-        "collateral": "sUSDs",
+        "collateral": "sUSDS",
         "borrow": "USDT",
     }
 }
