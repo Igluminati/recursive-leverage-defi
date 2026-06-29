@@ -39,7 +39,13 @@ WHALES = {
         "protocol": "morpho",
         "collateral": "sUSDS",
         "borrow": "USDT",
-    }
+    },
+    "W-7": {
+        "address": "0x32f07401eb177f2c0fc4f95f3928050d88dae7ed",
+        "protocol": "morpho",
+        "collateral": "sUSDe",
+        "borrow": "PYUSD",
+    },
 }
 
 DUNE_FILES = {
@@ -49,6 +55,7 @@ DUNE_FILES = {
     "W-4": "data/morpho/from_dune/morpho_w4_events.csv",
     "W-5": "data/morpho/from_dune/morpho_w5_events.csv",
     "W-6": "data/morpho/from_dune/morpho_w6_events.csv",
+    "W-7": "data/morpho/from_dune/morpho_w7_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}
