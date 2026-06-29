@@ -56,6 +56,7 @@ Dune CSVs  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd
 | W-3 | 0xcb1effb6... | Morpho   | sUSDS      | USDT   | Manual, daily rebalancer (170 rebalances) |
 | W-4 | 0x0d4f7b20... | Morpho   | sUSDe      | PYUSD  | Manual                            |
 | W-5 | 0x24385a79... | Morpho   | syrupUSDC  | PYUSD  | Manual                            |
+| W-6 | 0xfafc2c5f... | Morpho   | sUSDS      | USDT   | Manual                            |
 
 ## Liquidation Thresholds (per Morpho market config)
 
