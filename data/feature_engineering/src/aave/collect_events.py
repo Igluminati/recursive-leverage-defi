@@ -9,18 +9,11 @@ WHALES = {
         "protocol": "aave",
         "collateral": "sUSDe",
         "borrow": "USDT",
-    },
-    "W-7": {
-        "address": "0x24201ecd8b3f062215640b8c0740c4e892c091e3",
-        "protocol": "aave",
-        "collateral": "sUSDe",
-        "borrow": "USDe",
-    },
+    }
 }
 
 DUNE_FILES = {
     "W-6": "data/aave/from_dune/aave_w6_events.csv",
-    "W-7": "data/aave/from_dune/aave_w7_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}

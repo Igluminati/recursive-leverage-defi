@@ -47,7 +47,6 @@ Dune CSV  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd.
 | Whale | Query |
 |-------|-------|
 | W-6   | [Aave W-6 Events (sUSDe/USDT)](https://dune.com/queries/7524498) |
-| W-7   | [Aave W-7 Events (sUSDe/USDe)](https://dune.com/queries/7750912) |
 | —     | [Aave v3 Ethereum Daily USDT Borrow Rate](https://dune.com/queries/7748882) |
 
 ## Whales Tracked
@@ -55,7 +54,6 @@ Dune CSV  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd.
 | ID  | Address       | Protocol | Collateral | Borrow | Strategy |
 |-----|---------------|----------|------------|--------|----------|
 | W-6 | 0x029469ca... | Aave v3  | sUSDe      | USDT   | E-Mode looper |
-| W-7 | 0x24201ecd... | Aave v3  | sUSDe      | USDe   | E-Mode looper, opens and unwinds daily |
 
 ## Liquidation Threshold
 
