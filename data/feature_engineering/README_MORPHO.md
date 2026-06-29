@@ -62,6 +62,9 @@ Dune CSVs  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd
 | W-9 | 0x309e161a... | Morpho   | sUSDe      | DAI    | Manual, short-lived (2024)        |
 | W-10| 0x3363aca0... | Morpho   | sUSDe      | DAI    | Manual, long-term cycler (2024)   |
 | W-11| 0xb48ac9c5... | Morpho   | sUSDe      | DAI    | Manual, low-leverage cycler (2024-25) |
+| W-12| 0x9bcb2ee2... | Morpho   | sUSDS      | USDT   | Manual, deep looper (2026)        |
+| W-13| 0x206777f4... | Morpho   | sUSDS      | USDT   | Manual, deep looper (2026)        |
+| W-14| 0xc05855cb... | Morpho   | sUSDS      | USDT   | Manual, active cycler (2026)      |
 
 ## Liquidation Thresholds (per Morpho market config)
 
