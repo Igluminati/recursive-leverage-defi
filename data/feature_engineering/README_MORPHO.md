@@ -57,6 +57,11 @@ Dune CSVs  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd
 | W-4 | 0x0d4f7b20... | Morpho   | sUSDe      | PYUSD  | Manual                            |
 | W-5 | 0x24385a79... | Morpho   | syrupUSDC  | PYUSD  | Manual                            |
 | W-6 | 0xfafc2c5f... | Morpho   | sUSDS      | USDT   | Manual                            |
+| W-7 | 0x32f07401... | Morpho   | sUSDe      | PYUSD  | Manual, active rebalancer (>1k txs) |
+| W-8 | 0x218b5b98... | Morpho   | sUSDe      | DAI    | Manual, short-lived (2024)        |
+| W-9 | 0x309e161a... | Morpho   | sUSDe      | DAI    | Manual, short-lived (2024)        |
+| W-10| 0x3363aca0... | Morpho   | sUSDe      | DAI    | Manual, long-term cycler (2024)   |
+| W-11| 0xb48ac9c5... | Morpho   | sUSDe      | DAI    | Manual, low-leverage cycler (2024-25) |
 
 ## Liquidation Thresholds (per Morpho market config)
 
@@ -66,6 +71,8 @@ Dune CSVs  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd
 | sUSDS / USDT        | 0.965     |
 | sUSDe / PYUSD       | 0.915     |
 | syrupUSDC / PYUSD   | 0.915     |
+| sUSDe / DAI         | 0.915     |
+| sUSDe / DAI (legacy market) | 0.86 |
 
 ## Features
 
