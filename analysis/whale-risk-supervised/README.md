@@ -4,90 +4,88 @@ This folder contains three Jupyter notebooks that build supervised ML models to 
 
 ---
 
-**XGBoost** stands for **eXtreme Gradient Boosting**.
+## What is XGBoost?
 
-It builds a series of simple decision trees one after another, where each new tree learns from the mistakes of the previous one. By the end all trees vote together to make a final prediction.
+**XGBoost** stands for **eXtreme Gradient Boosting**. It is a machine learning model used for making predictions from data, commonly used for things like predicting whether something will happen or not.
 
----
+It builds a series of simple decision trees, one after another. Each new tree learns from the mistakes of the tree before it. At the end, all the trees vote together to make a final prediction.
 
 **Simple analogy:**
 
-Imagine you're trying to predict if a whale will rebalance. You ask 50 experts one by one:
+Imagine you are trying to predict if a whale will rebalance. You ask 50 experts one by one.
 
 - Expert 1 makes a rough guess
 - Expert 2 looks at where Expert 1 went wrong and tries to fix those mistakes
 - Expert 3 fixes Expert 2's remaining mistakes
-- ... and so on for 50 experts
+- And so on, for 50 experts
 
-The final answer is all 50 experts combining their opinions. Each expert is weak alone but together they are strong.
-
----
+The final answer is all 50 experts combining their opinions. Each expert is weak alone, but together they are strong.
 
 **Why XGBoost over other models:**
 
-- Handles messy real-world data well
-- Works with imbalanced classes (via `scale_pos_weight`)
-- Gives feature importance — tells you which variables matter most
-- Works well with small datasets
-- Compatible with SHAP for interpretation
+- Handles messy real world data well
+- Works with imbalanced classes, using `scale_pos_weight`
+- Gives feature importance, so it tells you which variables matter most
+- Works well even with a moderate amount of data
+- Works well together with SHAP for interpretation
 
 ---
 
-**SHAP** stands for **SHapley Additive exPlanations**.
+## What is SHAP?
 
-It opens up the XGBoost black box and explains **why** the model made each prediction.
+**SHAP** stands for **SHapley Additive exPlanations**. It opens up the XGBoost black box and explains why the model made each prediction.
 
----
+Imagine XGBoost is a doctor diagnosing a patient. It says "this patient is at risk." SHAP is the explanation: "because their blood pressure is high, they have not exercised in a week, but their cholesterol is fine." Each factor gets a score showing how much it contributed to the final decision.
 
-Imagine XGBoost is a doctor diagnosing a patient. It says "this patient is at risk." SHAP is the explanation: "because their blood pressure is high (+0.4), they haven't exercised in a week (+0.3), but their cholesterol is fine (-0.1)."
+In our models, when XGBoost predicts a whale will rebalance, SHAP tells us which features pushed that decision, and by how much, for example whether recent leverage swings or leverage history mattered most for that specific day.
 
-Each factor gets a score showing how much it contributed to the final decision.
-
----
-**In model:**
-
-When XGBoost predicts a whale will rebalance, SHAP tells you:
-- `ltv_lag_7` pushed the prediction by +1.1 — high leverage 7 days ago is the main reason
-- `distance_to_liq` pushed by +0.4 — getting close to liquidation
-- `carry_spread` pushed by -0.1 — yield is fine, slightly reducing urgency
+Without SHAP, XGBoost is just a black box that says yes or no. With SHAP, we can say which on-chain variables drive whale behavior and by how much, which directly answers RQ3.
 
 ---
-
-Without SHAP, XGBoost is just a black box that says yes or no. With SHAP you can say **which on-chain variables drive whale behaviour and by how much** — which directly answers RQ3.
-
 
 ## Notebooks
 
-### `01_eda_stress_threshold.ipynb` — Explore & Label
-**What it does:**
-- Loads the whale features CSV (667 rows, 37 columns, 6 whales W-1 to W-6), spanning 2025-01-09 to 2026-05-23
-- Plots `health_factor` and `distance_to_liq` (mean + min) per whale, plus full summary statistics
-- Defines `stressed_state` as the bottom 30% of each whale's own health factor distribution
-- Saves enriched dataset as `whale_features_labeled.csv` (667 rows, 39 columns — adds `hf_threshold` and `stressed_state`)
+### `01_eda_stress_threshold.ipynb`, Explore and Label
 
-**Rows per whale:** W-2 (300), W-3 (139), W-6 (88), W-1 (78), W-5 (35), W-4 (27)
+**What it does:**
+
+- Loads the whale features CSV: 2,507 rows, 24 whales (W-1 to W-24), spanning 2024-03-29 to 2026-06-27
+- Plots `health_factor` and `distance_to_liq` (mean and min) per whale, sorted numerically (W-1 through W-24), plus full summary statistics
+- Defines `stressed_state` using a fixed threshold: a whale is stressed on any day its health factor drops to 1.05 or below
+- Saves the enriched dataset as `whale_features_labeled.csv`
+
+**Rows per whale range widely**, from W-17 with just 1 row up to W-11 with 622 rows. Most whales fall between 20 and 250 rows.
+
+**Why a fixed threshold instead of a percentile?**
+
+An earlier version of this notebook used each whale's own worst 30% of days as the stress cutoff. This turned out to be misleading, because health factor has a fixed real world meaning (1.0 means liquidation), but the percentile method compared each whale only to itself. This made a whale that lives constantly near 1.0 (like W-1) look no riskier than a whale that is always safely above 1.4 (like W-4), since both would show roughly the same 30% stressed rate.
+
+Switching to a single fixed threshold (1.05) fixes this. Now a whale is only marked stressed when it is actually close to liquidation, which is consistent and comparable across all whales.
 
 **EDA takeaways:**
-- Whales split into two groups: aggressive operators (W-1, W-2, W-3) running close to liquidation, and conservative operators (W-4, W-5) with comfortable buffers. W-6 sits in between.
-- W-1 operates chronically near liquidation (mean health factor ~1.010, mean distance to liquidation ~0.009).
-- W-3 is bimodal — high average buffer masking episodes of extreme risk.
-- W-5 is the most disciplined — lowest volatility in both metrics, minimum nearly equal to mean.
-- Overall **stressed rate: 31.0%**; overall **rebalancing rate: 16.0%** (107 of 667 days).
+
+- Whales split into three broad patterns: a small group with high average safety buffers but occasional risky dips (W-11, W-16, W-3, W-13), a group of steady conservative operators (W-4, W-5, W-8, W-24), and a couple of whales that sit close to liquidation almost constantly (W-1, W-12).
+- W-1 and W-12 are stressed on more than 95% of their days under the fixed threshold.
+- Several whales, including W-4, W-5, W-8, W-11, W-16, W-17, W-19, W-23, and W-24, are never stressed under this threshold.
+- Overall **stressed rate: 28.9%** (725 of 2,507 days). Overall **rebalancing rate: 14.8%** (371 of 2,507 days).
 
 **Output:** `whale_features_labeled.csv`
 
 ---
 
-### `02_model_rebalancing.ipynb` — Model A: Predict Rebalancing
+### `02_model_rebalancing.ipynb`, Model A: Predict Rebalancing
+
 **What it does:**
+
 - Predicts whether a whale will rebalance on a given day
-- Target: `rebalancing` (0 or 1, already in the data — 560 no / 107 yes)
-- After dropping rows with missing features, the modelling set is 363 rows; stratified 70/30 split → 254 train / 109 test
-- Runs Logistic Regression (`class_weight='balanced'`) as baseline, then XGBoost
-- Uses `scale_pos_weight = 6.06` to handle the ~6:1 class imbalance
-- Explains predictions with SHAP
+- Target: `rebalancing` (0 or 1, already in the data)
+- After dropping rows with missing features, the modeling set is 1,475 rows. A stratified 70/30 split gives 1,032 training rows and 443 test rows.
+- Runs Logistic Regression (`class_weight='balanced'`) as a baseline, then XGBoost
+- Uses `scale_pos_weight = 5.83` to handle the class imbalance
+- Explains predictions with feature importance and SHAP
 
 **Features used (11):**
+
 - `ltv`, `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`
 - `ltv_vol_7d`, `ltv_vol_14d`
 - `distance_to_liq`, `health_factor`
@@ -96,51 +94,66 @@ Without SHAP, XGBoost is just a black box that says yes or no. With SHAP you can
 
 **Results (test set, class = rebalancing):**
 
-| Model | ROC-AUC | Recall | Precision |
-|---|---|---|---|
-| Logistic Regression | 0.764 | 0.69 | 0.55 |
-| XGBoost | 0.919 | 0.75 | 0.44 |
+| Model | ROC-AUC | Recall | Precision | Accuracy |
+|---|---|---|---|---|
+| Logistic Regression | 0.828 | 0.69 | 0.36 | 78% |
+| XGBoost | 0.876 | 0.71 | 0.41 | 81% |
 
-XGBoost catches more rebalancing days (12 of 16 vs 11 of 16) and has a much stronger ROC-AUC (0.919 vs 0.764), at the cost of more false alarms (15 vs 9). In a risk context, catching more real events is worth the extra false alarms.
+XGBoost improves on every measure. It catches slightly more rebalancing days (46 of 65 versus 45 of 65), makes fewer false alarms (65 versus 79), and has a stronger ROC-AUC. The improvement is modest but real and consistent across the board.
 
-**Feature importance (gain):** `ltv_lag_7` (49.7) ≫ `ltv_lag_1` (29.1) > `ltv_vol_7d` (27.0) > `distance_to_liq` (19.0) > `health_factor` (18.9); `carry_spread` (7.4) and `carry_spread_levered` (0.7) rank last. (SHAP highlights `ltv_vol_7d` as having the widest spread, with `ltv_lag_1` the cleanest directional signal.)
+**Feature importance (gain):** `ltv_vol_7d` (65.2) and `ltv_lag_7` (61.5) are the top two, followed by `ltv` (45.3), `ltv_vol_14d` (38.7), `ltv_lag_1` (34.0), and `ltv_lag_3` (33.6). `carry_spread_levered` (19.5), `carry_spread` (9.8), and `health_factor` (6.9) rank lowest. `distance_to_liq` and `loop_depth` were not used by any tree in the model.
 
-**Key finding:** Rebalancing is driven by accumulated leverage history and recent volatility — `ltv_lag_7`, `ltv_lag_1`, and `ltv_vol_7d` are the top predictors. Whales react to sustained leverage buildup over days, not just today's risk level.
+**Key finding:** Rebalancing is driven by leverage and how it has changed over the past 7 to 14 days, not by a single snapshot value or by yield. Whales appear to react to a build up of risk over time, rather than acting on any single day's numbers.
 
 **Output:** `predictions_rebalancing.csv`
 
 ---
 
-### `03_model_stressed.ipynb` — Model B: Predict Stressed State
+### `03_model_stressed.ipynb`, Model B: Predict Stressed State
+
 **What it does:**
-- Predicts whether a whale is in a stressed risk state on a given day
-- Target: `stressed_state` (defined in notebook 01 as bottom 30% health factor per whale — 460 no / 207 yes, 31.0% rate)
-- After dropping rows with missing features, the modelling set is 415 rows; stratified 70/30 split → 290 train / 125 test
-- Runs Logistic Regression as baseline, then XGBoost, each at thresholds 0.5 and 0.3
-- Explains predictions with SHAP
+
+- Predicts whether a whale is in a stressed risk state on a given day, using the fixed threshold definition from notebook 01
+- Target: `stressed_state` (1,782 not stressed, 725 stressed, 28.9% stressed rate)
+- After dropping rows with missing features, the modeling set is 2,088 rows. A stratified 70/30 split gives 1,460 training rows and 628 test rows.
+- Runs Logistic Regression as a baseline, then XGBoost, each at thresholds 0.5 and 0.3
+- Explains predictions with feature importance and SHAP
 
 **Features used (9):**
-- `ltv`, `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`
+
 - `ltv_vol_7d`, `ltv_vol_14d`
 - `carry_spread`, `carry_spread_levered`
-- `loop_depth`
+- `ybt_apy`, `borrow_rate`, `supply_rate`
+- `collateral_price`, `borrow_price`
 
-**Note:** `health_factor` and `distance_to_liq` are excluded — they were used to define `stressed_state` and would cause data leakage.
+**Why this feature list took a few rounds to get right:**
+
+The first attempt included `ltv`, its lagged versions, `health_factor`, `distance_to_liq`, and `loop_depth`, and produced a ROC-AUC of 1.000, a clear sign of data leakage. Checking the raw values confirmed it: `ltv` above about 0.87 almost perfectly separated stressed from not stressed days, and `loop_depth` above 8 did the same. Both features were removed, since `health_factor` (which defines `stressed_state`) is built directly from `ltv`, and `loop_depth` turned out to be tied to the same underlying formula.
+
+After removing those, a second, smaller leak was found. `collateral_balance` and `borrow_balance` let XGBoost reach a ROC-AUC of 0.993, a much bigger jump over Logistic Regression than normal. Trees can exploit hidden cutoffs in raw numbers more easily than a straight line model can, so a leak that Logistic Regression missed still showed up in XGBoost. Removing these two balance features brought XGBoost back down to a believable 0.977, close to Logistic Regression's 0.971, confirming the leak was gone.
+
+**Features excluded and why:**
+
+- `ltv`, `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`, `health_factor`, `distance_to_liq`, `loop_depth`: too closely tied to how `stressed_state` was defined
+- `collateral_balance_usd`, `borrow_balance_usd`, `liquidation_threshold`: `ltv` is built directly from these
+- `collateral_balance`, `borrow_balance`: raw token amounts, but still let XGBoost find a near perfect shortcut, so they were dropped even though the leak here was smaller and less obvious
+- `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance`: these belong to the rebalancing target, not this one, and added no real value here
+- `rebalancing`: a separate target variable, not a feature
 
 **Results (test set, class = stressed):**
 
 | Model | Threshold | ROC-AUC | Recall | Precision | Accuracy |
 |---|---|---|---|---|---|
-| Logistic Regression | 0.5 | 0.849 | 0.85 | 0.67 | 79% |
-| Logistic Regression | 0.3 | 0.849 | 0.98 | 0.47 | 59% |
-| XGBoost | 0.5 | 0.953 | 0.70 | 0.97 | 88% |
-| **XGBoost** | **0.3** | **0.953** | **0.93** | **0.78** | **88%** |
+| Logistic Regression | 0.5 | 0.971 | 0.95 | 0.75 | 89% |
+| Logistic Regression | 0.3 | 0.971 | 0.98 | 0.67 | 84% |
+| XGBoost | 0.5 | 0.977 | 0.82 | 0.93 | 92% |
+| **XGBoost** | **0.3** | **0.977** | **0.90** | **0.81** | **90%** |
 
-The chosen model is **XGBoost at threshold 0.3**: recall of 0.93 (catches 43 of 46 stressed days, missing only 3) with 12 false alarms and strong accuracy of 88%.
+The chosen model is **XGBoost at threshold 0.3**: it catches 180 of 199 stressed days (missing only 19), with 42 false alarms out of 429 non-stressed days. This gives the best overall balance of catching real stress events while keeping false alarms reasonably low. If keeping false alarms as low as possible matters more than catching every event, XGBoost at the default threshold of 0.5 is the more conservative choice, with only 13 false alarms but a lower recall of 82%.
 
-**Feature importance (gain):** `loop_depth` (16.2) > `ltv` (14.4) > `ltv_lag_1` (13.9) > `ltv_lag_7` (12.8) > `ltv_vol_7d` (12.5) > `carry_spread` (12.0) > `carry_spread_levered` (10.8); `ltv_vol_14d` (6.1) ranks last.
+**Feature importance (gain):** `ybt_apy` (89.3) is the top feature, followed closely by `carry_spread` (84.5), `supply_rate` (82.8), and `carry_spread_levered` (71.8). Leverage volatility (`ltv_vol_7d` at 69.6, `ltv_vol_14d` at 41.3) and `borrow_rate` (40.2) matter too, but less. `collateral_price` (32.6) and `borrow_price` (28.2) matter the least, though they still contribute meaningfully. No single feature dominates, which is a good sign that this result is trustworthy.
 
-**Key finding:** Stressed states are driven by **position structure and current leverage** — loop depth and current LTV dominate. Unlike the rebalancing model, week-long history matters less here; stress is a near-instantaneous condition. `carry_spread_levered` has a protective effect: higher levered yield reduces stress likelihood.
+**Key finding:** Stressed states are driven mainly by yield and interest rate changes, more than by leverage swings alone. A whale can be in a risky position even when its leverage looks stable, if the yield it earns drops too close to its borrowing cost. Leverage volatility still adds some signal, but it plays a smaller role than the yield and rate features here.
 
 **Output:** `predictions_stressed.csv`
 
@@ -148,33 +161,37 @@ The chosen model is **XGBoost at threshold 0.3**: recall of 0.93 (catches 43 of 
 
 ## Key Design Decisions
 
-**Why percentile-based stressed_state?**
-Fixed thresholds (e.g. `health_factor < 1.05`) made some whales always stressed and others never stressed. Using each whale's own bottom 30% ensures every whale contributes both stressed and non-stressed days.
+**Why a fixed threshold instead of a percentile for `stressed_state`?**
+
+Health factor has a fixed, real world meaning: 1.0 means liquidation. Comparing each whale only to its own history (the percentile approach) made whales that are always near liquidation look no riskier than whales that are always safe, since both would land close to the same percentile based rate. A fixed threshold (health factor at or below 1.05) gives a result that reflects real danger and is comparable across all whales.
 
 **Why threshold 0.3 for XGBoost in Model B?**
-In a risk management context, missing a stressed day is more costly than a false alarm. Lowering the decision threshold from 0.5 to 0.3 raises recall from 0.70 to 0.93, at the cost of some precision (0.97 → 0.78).
 
-**Why no leaky features?**
-- Model A excludes `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance` —
-  these are derived from the rebalancing column which is the target
-- Model B excludes `health_factor`, `distance_to_liq` —
-  these were used to define `stressed_state` so including them would let the model
-  see the answer directly
-- Model B also excludes `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance` —
-  adding them worsened precision from 0.70 to 0.47 with only marginal ROC-AUC gain,
-  so they were dropped for a cleaner model
+In a risk management context, missing a stressed day is usually more costly than a false alarm, since a missed stressed day could mean a whale gets liquidated. Lowering the decision threshold from 0.5 to 0.3 raises recall from 0.82 to 0.90, at the cost of some precision (0.93 down to 0.81).
+
+**Why so few features in Model B compared to Model A?**
+
+Model A predicts `rebalancing`, an action a whale actually takes, so features like `ltv`, `health_factor`, and `distance_to_liq` are safe to use there. Model B predicts `stressed_state`, which was built directly from `health_factor`, so any feature too closely tied to that formula would let the model see the answer instead of learning real patterns. This is why Model B's feature list looks different, even though both notebooks start from the same dataset.
+
+**Why no leaky features overall?**
+
+- Model A excludes `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance`, since these are derived from the rebalancing column itself, which is the target
+- Model B excludes `ltv` and its lagged versions, `health_factor`, `distance_to_liq`, and `loop_depth`, since these were used to define `stressed_state`
+- Model B also excludes `collateral_balance` and `borrow_balance`, since these let XGBoost find a near perfect shortcut even though the leak was less obvious than with `ltv`
+
+---
 
 ## Data Flow
 
 ```
 daily_features_all.csv
-       ↓
+       |
 01_eda_stress_threshold.ipynb
-       ↓
+       |
 whale_features_labeled.csv
-       ↓                    ↓
+       |                    |
 02_model_rebalancing     03_model_stressed
-       ↓                    ↓
+       |                    |
 predictions_rebalancing  predictions_stressed
 .csv                     .csv
 ```
@@ -188,51 +205,39 @@ pandas, numpy, matplotlib, seaborn
 scikit-learn, xgboost, shap
 ```
 
-**RQ3: To what extent can on-chain state variables predict short-horizon rebalancing events and stressed risk states?**
+---
+
+## RQ3: To what extent can on-chain state variables predict short-horizon rebalancing events and stressed risk states?
+
+**Short answer: yes, they can, with strong predictive power.**
+
+**Rebalancing prediction:** On-chain state variables predict rebalancing events with a ROC-AUC of 0.876. The dominant predictors are leverage volatility (`ltv_vol_7d`) and leverage history (`ltv_lag_7`), not current risk metrics. Whales appear to respond to sustained leverage buildup over days, not to immediate danger signals.
+
+**Stressed state prediction:** On-chain state variables predict stressed risk states with a ROC-AUC of 0.977 and recall of 0.90 at threshold 0.3. The dominant predictors are yield and rate related: `ybt_apy`, `carry_spread`, and `supply_rate`. Stress appears to be tied more closely to shrinking yield and rate conditions than to leverage alone.
 
 ---
 
-**Short answer: Yes, they can — with strong predictive power.**
+## Findings
 
----
-
-**Rebalancing prediction:**
-On-chain state variables predict rebalancing events with ROC-AUC of 0.919. The dominant predictors are historical LTV (`ltv_lag_7`, `ltv_lag_1`) and leverage volatility (`ltv_vol_7d`) — not current risk metrics. Whales respond to **sustained leverage buildup over days**, not immediate danger signals.
-
-**Stressed state prediction:**
-On-chain state variables predict stressed risk states even more strongly — ROC-AUC of 0.953 with recall of 0.93 at threshold 0.3. The dominant predictors are **loop depth and current LTV** — stress is a near-instantaneous condition driven by position structure and where leverage is right now. Yield compression (`carry_spread_levered`) plays a secondary protective role.
-
----
-
-# Findings
 **The bigger finding across both models:**
 
-The two phenomena are driven by **different mechanisms**:
-- Stress is reactive to the present — position structure and current leverage level
-- Rebalancing is reactive to the past — accumulated leverage history over a week
+The two phenomena are driven by different mechanisms.
 
-**On-chain data can predict both rebalancing and stress — but through different mechanisms.**
+- Rebalancing is reactive to the past: accumulated leverage history and volatility over 7 to 14 days
+- Stress is reactive to yield and rate conditions: how much a whale is earning relative to what it is paying to borrow
 
----
+**Finding 1: Rebalancing is a delayed response**
 
-**Finding 1 — Rebalancing is a delayed response**
+Whales do not rebalance the moment things get risky. The strongest predictors of rebalancing are leverage volatility over the past week and leverage from a week ago, not today's leverage level alone. This suggests rebalancing is a considered decision, not a panic reaction.
 
-Whales do not rebalance the moment things get risky. They watch leverage build up over several days and then act. The strongest predictor of rebalancing today (by gain) is what LTV was 7 days ago — not what it is today. This means rebalancing is a **deliberate, patient decision**, not a panic reaction.
+**Finding 2: Stress tracks yield and rate conditions closely**
 
----
+A whale is more likely to be flagged as stressed when its yield (`ybt_apy`), carry spread, and supply rate move against it, more so than when its leverage alone changes. This means stress in this dataset looks less like "leverage got too high" and more like "the position stopped being worth the risk."
 
-**Finding 2 — Stress is a near-instant condition**
+**Finding 3: Leverage volatility matters for both, but plays different roles**
 
-A whale is stressed when its loop depth is high and its current LTV is elevated. The model detects stressed states with strong recall (0.93 at threshold 0.3) just by looking at position structure and recent leverage. Stress is **immediate and observable**.
-
----
-
-**Finding 3 — Yield barely matters for either**
-
-`carry_spread` and `carry_spread_levered` rank near the bottom in the rebalancing model. Whales rebalance based on **risk signals, not yield signals**. They are not chasing yield — they are managing leverage. (The one nuance: `carry_spread_levered` has a mild protective effect on stress.)
-
----
+In the rebalancing model, `ltv_vol_7d` is the single most important feature. In the stressed model, it still matters but ranks behind the yield and rate features. This suggests volatility is more of a trigger for action (rebalancing) than a definition of danger (stress) in this dataset.
 
 **The big picture:**
 
-Whales get stressed first, then wait, then rebalance. On-chain data captures all three stages clearly. This means DeFi risk can be monitored and potentially predicted in real time using only publicly available blockchain data.
+Whales seem to watch leverage build up over time before deciding to rebalance, while their stressed state on any given day is shaped more by yield and rate conditions than by leverage swings alone. On-chain data captures both of these patterns clearly, which means DeFi risk behavior can likely be monitored, and to some extent predicted, using only publicly available blockchain data.
