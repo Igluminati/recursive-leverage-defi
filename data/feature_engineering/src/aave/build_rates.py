@@ -11,6 +11,8 @@ APY_POOLS = {
 BORROW_RATES = {
     "USDT": "data/aave/from_dune/aave_borrow_rates.csv",
     "USDe": "data/aave/from_dune/aave_usde_borrow_rates.csv",
+    "USDC": "data/aave/from_dune/aave_usdc_borrow_rates.csv",
+
 }
 
 SUPPLY_RATES = {

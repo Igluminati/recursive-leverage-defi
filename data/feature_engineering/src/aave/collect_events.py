@@ -4,16 +4,59 @@ import pandas as pd
 from collections import Counter
 
 WHALES = {
-    "W-6": {
+    "W-18": {
         "address": "0x029469ca80e6c94436af010a369f54935a711080",
         "protocol": "aave",
         "collateral": "sUSDe",
         "borrow": "USDT",
+    },
+    "W-19": {
+        "address": "0x5D876B100Dd38D0701725035B97632553eaa1836",
+        "protocol": "aave",
+        "collateral": "sUSDe",
+        "borrow": "USDC",
+    },
+    "W-20": {
+        "address": "0x5D876B100Dd38D0701725035B97632553eaa1836",
+        "protocol": "aave",
+        "collateral": "sUSDe",
+        "borrow": "USDe",
+    },
+    "W-21": {
+        "address": "0x852689F44a4CA94a0E424EAd14A1Bb63719314db",
+        "protocol": "aave",
+        "collateral": "sUSDe",
+        "borrow": "USDe",
+    },
+    "W-22": {
+        "address": "0x24201ECD8b3f062215640B8c0740C4e892c091E3",
+        "protocol": "aave",
+        "collateral": "sUSDe",
+        "borrow": "USDe",
+    },
+    "W-23": {
+        "address": "0x23270C161c42fFd0636fe786Cc7c518A0181234F",
+        "protocol": "aave",
+        "collateral": "sUSDe",
+        "borrow": "USDC",
+    },
+    "W-24": {
+        "address": "0xF3AdD38c51924221Dcf30767f69c6E57D77D9566",
+        "protocol": "aave",
+        "collateral": "sUSDe",
+        "borrow": "USDC",
     }
 }
 
+
 DUNE_FILES = {
-    "W-6": "data/aave/from_dune/aave_w6_events.csv",
+    "W-18": "data/aave/from_dune/aave_w18_events.csv",
+    "W-19": "data/aave/from_dune/aave_w19_events.csv",
+    "W-20": "data/aave/from_dune/aave_w20_events.csv",
+    "W-21": "data/aave/from_dune/aave_w21_events.csv",
+    "W-22": "data/aave/from_dune/aave_w22_events.csv",
+    "W-23": "data/aave/from_dune/aave_w23_events.csv",
+    "W-24": "data/aave/from_dune/aave_w24_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}

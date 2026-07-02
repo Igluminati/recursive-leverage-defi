@@ -9,12 +9,14 @@ TOKEN_ADDRESSES = {
     "sUSDe": "ethereum:0x9d39a5de30e57443bff2a8307a4256c8797a3497",
     "USDT": "ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7",
     "USDe": "ethereum:0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+    "USDC": "ethereum:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
 }
 
 FALLBACK_PRICES = {
     "sUSDe": 1.2,
     "USDT": 1.0,
     "USDe": 1.0,
+    "USDC": 1.0,
 }
 
 

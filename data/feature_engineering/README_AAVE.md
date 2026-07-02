@@ -44,16 +44,19 @@ Dune CSV  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd.
 
 ## Dune Queries
 
-| Whale | Query |
-|-------|-------|
-| W-6   | [Aave W-6 Events (sUSDe/USDT)](https://dune.com/queries/7524498) |
-| —     | [Aave v3 Ethereum Daily USDT Borrow Rate](https://dune.com/queries/7748882) |
-
 ## Whales Tracked
 
-| ID  | Address       | Protocol | Collateral | Borrow | Strategy |
-|-----|---------------|----------|------------|--------|----------|
-| W-6 | 0x029469ca... | Aave v3  | sUSDe      | USDT   | E-Mode looper |
+| ID   | Address       | Protocol | Collateral | Borrow | Strategy |
+|------|---------------|----------|------------|--------|----------|
+| W-18 | 0x029469ca80e6c94436af010a369f54935a711080 | Aave v3  | sUSDe      | USDT   | E-Mode looper |
+| W-19 | 0x5D876B100Dd38D0701725035B97632553eaa1836 | Aave v3  | sUSDe      | USDC   | E-Mode looper |
+| W-20 | 0x5D876B100Dd38D0701725035B97632553eaa1836 | Aave v3  | sUSDe      | USDe   | E-Mode looper |
+| W-21 | 0x852689F44a4CA94a0E424EAd14A1Bb63719314db | Aave v3  | sUSDe      | USDe   | E-Mode looper |
+| W-22 | 0x24201ECD8b3f062215640B8c0740C4e892c091E3 | Aave v3  | sUSDe      | USDe   | E-Mode looper |
+| W-23 | 0x23270C161c42fFd0636fe786Cc7c518A0181234F | Aave v3  | sUSDe      | USDC   | E-Mode looper |
+| W-24 | 0xF3AdD38c51924221Dcf30767f69c6E57D77D9566 | Aave v3  | sUSDe      | USDC   | E-Mode looper |## Whales Tracked
+
+
 
 ## Liquidation Threshold
 
