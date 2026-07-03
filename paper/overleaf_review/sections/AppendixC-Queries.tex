@@ -1,0 +1,114 @@
+\section{SQL Queries}
+\label{sec:queries}
+
+The following Dune Analytics queries are used for data collection. Full SQL is available in the project repository.
+
+\subsection*{YBT Price and Event Queries}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\hline
+\textbf{Data} & \textbf{Dune Query ID} \\
+\hline
+Daily prices & 7359293 \\
+Aave v3 events (sUSDe) & 7359302 \\
+Morpho Blue events (all tokens) & 7359324 \\
+SparkLend events (sUSDS) & 7368610 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Whale Identification Queries}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{Token} & \textbf{Protocol} & \textbf{Dune Query ID} \\
+\hline
+sUSDe & Aave v3 & 7349560 \\
+sUSDe & Morpho Blue & 7344848 \\
+sUSDS & Morpho Blue & 7367663 \\
+sUSDS & SparkLend & 7368059 \\
+syrupUSDC & Morpho Blue & 7367806 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Sample SQL: Aave v3 Events}
+
+\begin{verbatim}
+SELECT 
+    'supply' AS event_type,
+    evt_block_time AS block_time,
+    evt_block_number AS block_number,
+    evt_tx_hash AS tx_hash,
+    "user",
+    onBehalfOf AS on_behalf_of,
+    'sUSDe' AS token,
+    CAST(amount AS DOUBLE) / 1e18 AS amount
+FROM aave_v3_ethereum.Pool_evt_Supply
+WHERE reserve = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497
+
+UNION ALL
+
+SELECT 
+    'withdraw' AS event_type,
+    evt_block_time, evt_block_number, evt_tx_hash,
+    "user", "to" AS on_behalf_of, 'sUSDe',
+    CAST(amount AS DOUBLE) / 1e18
+FROM aave_v3_ethereum.Pool_evt_Withdraw
+WHERE reserve = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497
+
+-- borrow, repay, liquidation events follow same pattern
+ORDER BY block_time DESC
+\end{verbatim}
+
+\subsection*{Sample SQL: SparkLend Events}
+
+\begin{verbatim}
+SELECT 
+    'supply' AS event_type,
+    evt_block_time AS block_time,
+    evt_block_number AS block_number,
+    evt_tx_hash AS tx_hash,
+    "user",
+    onBehalfOf AS on_behalf_of,
+    'sUSDS' AS token,
+    CAST(amount AS DOUBLE) / 1e18 AS amount
+FROM spark_protocol_multichain.pool_evt_supply
+WHERE reserve = 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD
+  AND chain = 'ethereum'
+
+-- withdraw, borrow, repay, liquidation follow same pattern
+ORDER BY block_time DESC
+\end{verbatim}
+
+\subsection*{Sample SQL: Morpho Blue Events}
+
+\begin{verbatim}
+SELECT 
+    'supply' AS event_type,
+    evt_block_time AS block_time,
+    evt_block_number AS block_number,
+    evt_tx_hash AS tx_hash,
+    onBehalf AS on_behalf_of,
+    CASE JSON_EXTRACT_SCALAR(marketParams, '$.collateralToken')
+        WHEN '0x9D39A5DE...7A3497' THEN 'sUSDe'
+        WHEN '0xa3931d71...27fbD' THEN 'sUSDS'
+        WHEN '0x80ac24aA...5Cc0b' THEN 'syrupUSDC'
+    END AS token,
+    CAST(assets AS DOUBLE) / 1e18 AS amount
+FROM morpho_blue_ethereum.MorphoBlue_evt_SupplyCollateral
+WHERE JSON_EXTRACT_SCALAR(marketParams, '$.collateralToken') IN (
+    '0x9D39A5DE30e57443BfF2A8307A4256c8797A3497',
+    '0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD',
+    '0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b'
+)
+
+-- withdraw, borrow, repay, liquidation follow same pattern
+ORDER BY block_time DESC
+\end{verbatim}
+
+All queries are available at \texttt{https://dune.com/queries/<ID>}. The complete SQL including borrow, repay, and liquidation events is documented in \texttt{data/ybt/README.md} and \texttt{data/whales/README.md}.

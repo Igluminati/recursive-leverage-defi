@@ -1,0 +1,28 @@
+\section{Background}
+\label{sec:background}
+
+This section introduces yield-bearing tokens, the lending protocols where they are used as collateral, and the recursive leverage strategy known as looping.
+
+\subsection{Yield-Bearing Tokens}
+
+Yield-bearing tokens (YBTs) are ERC-20 tokens whose value accrues over time relative to an underlying asset through staking, lending, or vault returns. Unlike static stablecoins such as USDC or USDT, YBTs automatically compound yield into the token's exchange rate. The ERC-4626 standard provides a uniform interface for these tokenised vaults, defining methods for deposit, withdrawal, and share conversion.
+
+As of Q1 2026, major USD-denominated YBTs include sUSDe (Ethena, approximately \$3.5B market cap), sUSDS (Sky, approximately \$6B), and syrupUSDC (Maple Finance, approximately \$1.8B). These tokens generate yield through staking rewards, savings rate mechanisms, or institutional lending, typically offering 4--8\% APY.
+
+\subsection{Lending Protocols}
+
+Three major Ethereum mainnet lending protocols support YBTs as collateral:
+
+\textbf{Aave v3} is a pooled lending protocol where depositors supply assets to shared liquidity pools and borrowers draw from these pools. Each asset has protocol-defined parameters including loan-to-value (LTV) ratios and liquidation thresholds. Aave governance controls which assets can be listed and what parameters they use.
+
+\textbf{Morpho Blue} is a permissionless lending protocol that uses isolated markets where each collateral-borrow pair operates independently. Unlike Aave, anyone can create a new market with any collateral and borrow asset without requiring governance approval. This design allows for higher LTV ratios on specific pairs, as risk is contained within each market rather than shared across the protocol.
+
+\subsection{Recursive Leverage (Looping)}
+
+Looping refers to a recursive leverage strategy where the holder deposits a yield-bearing token as collateral, borrows a stablecoin against it, uses the borrowed stablecoin to purchase more of the same yield-bearing token, and re-deposits it as additional collateral. This cycle can be repeated to amplify effective carry at the cost of proportionally higher liquidation risk.
+
+The profitability of looping depends on the carry spread: the difference between the YBT yield and the borrowing cost. A positive spread means the position earns more than it pays in interest. A negative spread means the operator is losing money and should unwind.
+
+\subsection{Related Work}
+
+Prior work on DeFi leverage has examined liquidation cascades and systemic risk in lending protocols. Qin et al.\ studied empirical liquidation patterns on Compound and Aave, finding that cascading liquidations can amplify market stress. Studies of on-chain behavioural analysis have used clustering techniques to identify strategy archetypes among DeFi participants. This work extends that literature by focusing specifically on recursive leverage strategies in yield-bearing stablecoins, a segment that has grown rapidly but remains underexplored empirically.
