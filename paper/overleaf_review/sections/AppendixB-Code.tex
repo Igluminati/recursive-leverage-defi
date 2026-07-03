@@ -1,0 +1,120 @@
+\section{Smart Contract Code}
+\label{sec:code}
+
+The following is the complete \texttt{LeverageBot.sol} contract deployed on Base mainnet.
+
+\begin{verbatim}
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "./ILeverageBot.sol";
+
+contract LeverageBot is IMorphoFlashLoanCallback {
+    address public constant MORPHO = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
+    address public constant USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+    address public constant YO_USD = 0x0000000f2eB9f69274678c76222B35eEc7588a65;
+
+    address public constant MARKET_ORACLE = 0x77f59C5C09e7ABEF6991B456170930324FE36222;
+    address public constant MARKET_IRM = 0x46415998764C29aB2a25CbeA6254146D50D22687;
+    uint256 public constant MARKET_LLTV = 915000000000000000;
+    bytes32 public constant MARKET_ID = 
+        0x1a3e69d0109bb1be42b80e11034bb6ee98fc466721f26845dc83b2aa8d979137;
+
+    uint256 public constant OWN_CAPITAL = 10_000_000;      // 10 USDC
+    uint256 public constant FLASHLOAN_AMOUNT = 90_000_000; // 90 USDC
+
+    uint8 private constant ACTION_LEVERAGE = 1;
+    uint8 private constant ACTION_UNWIND = 2;
+
+    address public owner;
+    uint256 private _unwindUsdcReceived;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "LeverageBot: not owner");
+        _;
+    }
+
+    modifier onlyMorpho() {
+        require(msg.sender == MORPHO, "LeverageBot: caller not Morpho");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function execute() external onlyOwner {
+        IERC20(USDC).transferFrom(msg.sender, address(this), OWN_CAPITAL);
+        bytes memory data = abi.encode(ACTION_LEVERAGE, OWN_CAPITAL, FLASHLOAN_AMOUNT);
+        IMorpho(MORPHO).flashLoan(USDC, FLASHLOAN_AMOUNT, data);
+    }
+
+    function onMorphoFlashLoan(
+        uint256 flashloanAmount,
+        bytes calldata data
+    ) external override onlyMorpho {
+        uint8 action = abi.decode(data, (uint8));
+        if (action == ACTION_LEVERAGE) {
+            _onLeverage(flashloanAmount, data);
+        } else if (action == ACTION_UNWIND) {
+            _onUnwind(flashloanAmount, data);
+        }
+        IERC20(USDC).approve(MORPHO, flashloanAmount);
+    }
+
+    function unwind() external onlyOwner {
+        Position memory pos = IMorpho(MORPHO).position(MARKET_ID, address(this));
+        require(pos.borrowShares > 0 || pos.collateral > 0, 
+            "LeverageBot: no position");
+        uint256 owedAssets = _debtSharesToAssets(pos.borrowShares);
+        uint256 flashAmt = (owedAssets * 10100) / 10000 + 1;
+        _runUnwindFlashloan(flashAmt, pos);
+        uint256 netToOwner = IERC20(USDC).balanceOf(address(this));
+        if (netToOwner > 0) {
+            IERC20(USDC).transfer(owner, netToOwner);
+        }
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "LeverageBot: zero owner");
+        owner = newOwner;
+    }
+
+    function _onLeverage(uint256 flashloanAmount, bytes calldata data) private {
+        (, uint256 ownCapital, ) = abi.decode(data, (uint8, uint256, uint256));
+        uint256 totalUsdc = ownCapital + flashloanAmount;
+        IERC20(USDC).approve(YO_USD, totalUsdc);
+        uint256 yoUsdReceived = IERC4626(YO_USD).deposit(totalUsdc, address(this));
+        MarketParams memory mp = _getMarketParams();
+        IERC20(YO_USD).approve(MORPHO, yoUsdReceived);
+        IMorpho(MORPHO).supplyCollateral(mp, yoUsdReceived, address(this), "");
+        IMorpho(MORPHO).borrow(mp, flashloanAmount, 0, address(this), address(this));
+    }
+
+    function _onUnwind(uint256 flashloanAmount, bytes calldata data) private {
+        (, uint256 borrowShares, uint256 collateral) = 
+            abi.decode(data, (uint8, uint256, uint256));
+        MarketParams memory mp = _getMarketParams();
+        IERC20(USDC).approve(MORPHO, flashloanAmount);
+        IMorpho(MORPHO).repay(mp, 0, borrowShares, address(this), "");
+        IMorpho(MORPHO).withdrawCollateral(mp, collateral, address(this), address(this));
+        uint256 yoUsdHeld = IERC20(YO_USD).balanceOf(address(this));
+        if (yoUsdHeld > 0) {
+            _unwindUsdcReceived = IERC4626(YO_USD).redeem(
+                yoUsdHeld, address(this), address(this));
+        }
+    }
+
+    function _getMarketParams() private pure returns (MarketParams memory) {
+        return MarketParams({
+            loanToken: USDC,
+            collateralToken: YO_USD,
+            oracle: MARKET_ORACLE,
+            irm: MARKET_IRM,
+            lltv: MARKET_LLTV
+        });
+    }
+}
+\end{verbatim}
+
+The full source code including interfaces and tests is available in the project repository at \texttt{bot/contracts/}.

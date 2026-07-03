@@ -1,0 +1,33 @@
+\section{Introduction}
+\label{sec:intro}
+
+This project empirically studies how large holders use yield-bearing tokens (YBTs) to construct recursive looping strategies across Ethereum mainnet lending protocols. A YBT accrues yield passively through staking, lending, or vault returns while also serving as collateral. Some large holders exploit this dual property by depositing a YBT, borrowing against it, acquiring additional exposure, and repeating the process to increase effective carry at the cost of higher liquidation risk.
+
+\subsection{Motivation}
+
+Despite the rapid growth of yield-bearing stablecoins, limited empirical research characterises how large holders deploy these tokens. Understanding leverage depths and rebalancing behaviours is critical for systemic risk assessment, protocol parameter calibration, and on-chain risk monitoring, as concentrated leveraged positions can trigger cascading liquidations during market stress.
+
+\subsection{Problem Statement}
+
+The primary contribution is an empirical characterisation of strategy archetypes among large YBT holders. A secondary contribution is testing whether on-chain risk indicators can predict short-horizon rebalancing and stressed risk states.
+
+\subsection{Research Questions}
+
+\begin{itemize}
+    \item \textbf{RQ1:} What recurring leverage and looping strategy archetypes can be identified among large holders of major yield-bearing stablecoin tokens on Ethereum mainnet?
+    \item \textbf{RQ2:} Which observable risk-management characteristics (leverage depth, collateral buffers, and rebalancing behaviour) differentiate these archetypes?
+    \item \textbf{RQ3:} To what extent can on-chain state variables predict short-horizon rebalancing events and stressed risk states?
+\end{itemize}
+
+\subsection{Contributions}
+
+This work makes the following contributions:
+\begin{itemize}
+    \item A proof-of-concept bot demonstrating recursive leverage strategies on Morpho Blue, implemented with and without flashloans.
+    \item A data collection pipeline identifying large YBT holders and their on-chain activity across Aave v3, Morpho Blue.
+    \item An empirical analysis of strategy archetypes and risk management behaviours among whale addresses.
+\end{itemize}
+
+\subsection{Paper Organisation}
+
+Section~\ref{sec:background} provides background on yield-bearing tokens and lending protocols. Section~\ref{sec:poc} describes the proof-of-concept leverage bot. Section~\ref{sec:data} details the data collection pipeline. Section~\ref{sec:feature-engineering} covers feature engineering. Section~\ref{sec:ml-analysis} presents the machine learning analysis. Section~\ref{sec:discussion} discusses findings and limitations, and Section~\ref{sec:conclusions} concludes.
