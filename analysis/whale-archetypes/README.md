@@ -5,7 +5,6 @@ HDBSCAN clustering on whale-day behaviour for **RQ1** and **RQ2**.
 - **RQ1:** What recurring leverage/looping strategy archetypes exist among large YBT holders?
 - **RQ2:** Which risk-management characteristics differentiate these archetypes?
 
-**Sample:** all 24 whales (W-1–W-17 Morpho, W-18–W-24 Aave), 2,070 active looping days (from 2,507 whale-days in `daily_features_all.csv`).
 
 ---
 
@@ -16,13 +15,11 @@ HDBSCAN clustering on whale-day behaviour for **RQ1** and **RQ2**.
 | 1 | `01_eda_panel.ipynb` | `panel_cluster_ready.csv` |
 | 2 | `02_hdbscan_clustering.ipynb` | baseline exploration |
 | 3 | `03_balanced_clustering.ipynb` | `panel_archetypes.csv` |
-| 4 | `04_stressed_by_archetype.ipynb` | `panel_archetypes_stressed.csv` |
 
 ```bash
 cd analysis/whale-archetypes
 uv sync
 uv run jupyter lab
-# or: uv run jupyter nbconvert --execute --inplace 0*.ipynb
 ```
 
 ---
@@ -30,7 +27,7 @@ uv run jupyter lab
 ## `01_eda_panel.ipynb`
 
 - Loads `feature_engineering/data/daily_features_all.csv`, **all 24 whales** (Morpho + Aave)
-- Keeps active looping days: non-missing `ltv`, `carry_spread`, `carry_spread_levered` → **2,070 rows**
+- Keeps active looping days: non-missing `ltv`, `carry_spread`, `carry_spread_levered`, giving **2,070 rows**
 - 11 clustering features, median impute, StandardScaler
 - Saves `panel_cluster_ready.csv`
 
@@ -38,87 +35,37 @@ uv run jupyter lab
 
 ## `02_hdbscan_clustering.ipynb`
 
-Baseline HDBSCAN on full panel (`min_cluster_size=15`, `min_samples=5`). Clusters are whale-dominated → motivates balanced fit in notebook 03.
+Baseline HDBSCAN on full panel (`min_cluster_size=15`, `min_samples=5`). Clusters are whale-dominated, which motivates the balanced fit in notebook 03.
 
 ---
 
 ## `03_balanced_clustering.ipynb`
 
-- Fit pool: whales with ≥8 active days (21 of 24; excludes W-17=1, W-20=7, W-22=6 days)
-- Balanced sample: **8 days × 21 whales = 168** fit rows (`random_state=42`)
-- HDBSCAN: `min_cluster_size=8`, `min_samples=3` → 3 dense clusters
-- All 2,070 days assigned to nearest centroid; >95th percentile distance → `idle / outlier`
-- Profile-based names (not fixed cluster IDs)
-- `strategist_type`: **pure** if ≥80% of days in one archetype, else **mixed**
-- `moderate_sub`: splits moderate-leverage days into `moderate_light` (LTV < 0.6) vs `moderate_core` (LTV ≥ 0.6)
+- Fit pool: whales with at least 6 active days 
+- All 2,070 days assigned to nearest centroid; anything past the 95th percentile distance becomes `idle, outlier days`
+- Archetypes are named based on their profile
+- `strategist_type`: **pure** if at least 80% of days fall in one archetype, otherwise **mixed**
+- `moderate_sub`: splits the max leverage hold days into `moderate_light`(LTV under 0.6) and `moderate_core` (LTV at or above 0.6)
 
 ### Archetypes (2,070 days)
 
-| Archetype | Days | % | Mean LTV | Loop depth | Dist. to liq. | Days since rebal. | Rebal/7d |
-|-----------|------|---|----------|------------|---------------|-------------------|----------|
-| moderate leverage | 868 | 42 | 0.67 | 6.3 | 0.24 | 3 | 2.0 |
-| stale / light loop | 734 | 35 | 0.52 | 4.3 | 0.39 | 56 | 0.0 |
-| high-LTV hold | 364 | 18 | 0.92 | 15.7 | 0.03 | 47 | 0.4 |
-| idle / outlier | 104 | 5 | 0.31 | 3.3 | 0.63 | 4 | 2.5 |
+| Archetype | Days | % | Mean LTV | Loop depth | Dist. to liq. | Days since rebal. | LTV lag 7 | Carry spread | Carry spread levered |
+|-----------|------|---|----------|------------|---------------|-------------------|-----------|--------------|-----------------------|
+| max leverage hold | 364 | 18 | 0.92 | 14.95 | 0.04 | 42.87 | 0.91 | 7.80 | 80.73 |
+| active looping | 868 | 42 | 0.75 | 7.88 | 0.16 | 2.84 | 0.73 | 7.30 | 40.61 |
+| stale, low leverage | 734 | 35 | 0.48 | 3.64 | 0.42 | 49.23 | 0.47 | 3.94 | 8.65 |
 
-**RQ2 differentiation:** leverage level and loop depth first; then rebalancing cadence (`days_since_rebalance`, `rebal_freq_7d`).
+**RQ2 differentiation:** leverage level and loop depth first, then rebalancing cadence (`days_since_rebalance`, `rebal_freq_7d`).
 
 ### Pure vs mixed strategists
 
 | Type | Count | Examples |
 |------|-------|----------|
-| **pure** | 12 | W-2, W-12 (high-LTV hold); W-7, W-9, W-15, W-17, W-20, W-22, W-23, W-8 (moderate); W-19, W-24 (stale/light) |
-| **mixed** | 12 | W-3 (71% moderate, spreads across all four); W-11 (mostly moderate/stale); W-10, W-13, W-14 |
-
----
-
-## `04_stressed_by_archetype.ipynb`
-
-Joins `stressed_state` from `../whale-risk-supervised/whale_features_labeled.csv` (HF ≤ 1.05, fixed threshold).
-
-- All 2,070 archetype days match
-- Overall stressed share on active looping days: **32.9%**
-- Adds `stressed_abs` (same HF < 1.05 cut-off) for cross-archetype comparison
-
-| Archetype | Days | Stressed % (HF ≤ 1.05) |
-|-----------|------|------------------------|
-| high-LTV hold | 364 | 77.7 |
-| moderate leverage | 868 | 29.0 |
-| stale / light loop | 734 | 17.7 |
-| idle / outlier | 104 | 16.3 |
-
-Risk grades with leverage intensity: high-LTV hold is the most stressed mode; idle / outlier and stale / light loop the least.
-
----
+| **pure** | 11 | W-2 (90%), W-12 (100%) in max leverage hold; W-7 (97%), W-9 (83%), W-15 (100%), W-20 (100%), W-22 (100%), W-23 (100%) in active looping; W-17 (100%), W-19 (95%), W-24 (92%) in stale, low leverage |
+| **mixed** | 13 | W-3 (64% active looping, spread across all four types); W-13 (spread across three types); also W-1, W-4, W-5, W-6, W-8, W-10, W-11, W-14, W-16, W-18, W-21 |
 
 ## Key findings
-
-1. **Four behavioural modes**, not 24 whale types — archetypes describe *how* whales loop after balancing day counts.
-2. **Half the whales are mixed strategists** — 12/24 are pure, 12/24 are mixed; W-3 switches between moderate, high-LTV, stale/light, and idle days.
-3. **Moderate cluster splits in practice** — centroid reads “medium risk,” but day-level assignments scatter: within moderate, LTV < 0.6 days carry 0% stress vs 41% for LTV ≥ 0.6.
-4. **Stress aligns with archetype severity** under a shared HF cut-off — independent check against supervised labels.
-5. **Aave whales cluster with the aggressive Morpho whales** — W-18–W-24 all run high LTV (~0.79–0.89) and split mostly between moderate leverage and stale / light loop.
-
----
-
-## Data flow
-
-```
-feature_engineering/data/daily_features_all.csv  (all 24 whales)
-       ↓
-01_eda_panel.ipynb  →  panel_cluster_ready.csv
-       ↓
-02_hdbscan_clustering.ipynb  (exploratory)
-       ↓
-03_balanced_clustering.ipynb  →  panel_archetypes.csv
-       ↓
-04_stressed_by_archetype.ipynb  →  panel_archetypes_stressed.csv
-```
-
----
-
-## Dependencies
-
-```
-pandas, numpy, matplotlib, seaborn, scikit-learn, hdbscan
-```
+1. **Four behaviour modes, not 24 whale types.** The archetypes describe how whales loop, after balancing for how many days each whale appears in the data.
+2. **About half the whales are mixed strategists.** 11 of 24 are pure, meaning at least 80% of their days fall in one archetype. 13 of 24 are mixed. W-3 is a good example of a mixed whale, since it spreads across active looping, max leverage hold, and stale, low leverage days.
+3. **The max leverage hold cluster splits in practice.** Within this cluster, low LTV days (under 0.6) show different stress levels than high LTV days (0.6 or above). This is the split that the moderate_sub column captures.
+5. **Aave whales cluster with the more aggressive Morpho whales.** W-18 through W-24 mostly split between active looping and stale, low leverage days.
