@@ -49,12 +49,12 @@ Without SHAP, XGBoost is just a black box that says yes or no. With SHAP, we can
 
 **What it does:**
 
-- Loads the whale features CSV: 2,507 rows, 24 whales (W-1 to W-24), spanning 2024-03-29 to 2026-06-27
-- Plots `health_factor` and `distance_to_liq` (mean and min) per whale, sorted numerically (W-1 through W-24), plus full summary statistics
+- Loads the whale features CSV: 2,506 rows, 23 whales (W-1 to W-23), spanning 2024-03-29 to 2026-06-27
+- Plots `health_factor` and `distance_to_liq` (mean and min) per whale, sorted numerically (W-1 through W-23), plus full summary statistics
 - Defines `stressed_state` using a fixed threshold: a whale is stressed on any day its health factor drops to 1.05 or below
 - Saves the enriched dataset as `whale_features_labeled.csv`
 
-**Rows per whale range widely**, from W-17 with just 1 row up to W-11 with 622 rows. Most whales fall between 20 and 250 rows.
+**Rows per whale range widely**, from W-15 and W-22 with just 9 rows each up to W-11 with 622 rows. Most whales fall between 20 and 250 rows.
 
 **Why a fixed threshold instead of a percentile?**
 
@@ -64,10 +64,10 @@ Switching to a single fixed threshold (1.05) fixes this. Now a whale is only mar
 
 **EDA takeaways:**
 
-- Whales split into three broad patterns: a small group with high average safety buffers but occasional risky dips (W-11, W-16, W-3, W-13), a group of steady conservative operators (W-4, W-5, W-8, W-24), and a couple of whales that sit close to liquidation almost constantly (W-1, W-12).
+- Whales split into three broad patterns: a small group with high average safety buffers but occasional risky dips (W-11, W-16, W-3, W-13), a group of steady conservative operators (W-4, W-5, W-8, W-23), and a couple of whales that sit close to liquidation almost constantly (W-1, W-12).
 - W-1 and W-12 are stressed on more than 95% of their days under the fixed threshold.
-- Several whales, including W-4, W-5, W-8, W-11, W-16, W-17, W-19, W-23, and W-24, are never stressed under this threshold.
-- Overall **stressed rate: 28.9%** (725 of 2,507 days). Overall **rebalancing rate: 14.8%** (371 of 2,507 days).
+- Several whales, including W-4, W-5, W-8, W-11, W-16, W-18, W-22, and W-23, are never stressed under this threshold.
+- Overall **stressed rate: 28.9%** (725 of 2,506 days). Overall **rebalancing rate: 14.8%** (371 of 2,506 days).
 
 **Output:** `whale_features_labeled.csv`
 

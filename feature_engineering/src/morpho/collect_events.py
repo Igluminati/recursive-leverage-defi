@@ -100,12 +100,8 @@ WHALES = {
         "collateral": "syrupUSDC",
         "borrow": "USDC",
     },
-    "W-17": {
-        "address": "0xc5d6a3e7c5c165839cf9c113ed41d0e9e90d0895",
-        "protocol": "morpho",
-        "collateral": "syrupUSDC",
-        "borrow": "PYUSD",
-    },
+    # Former W-17 (0xc5d6a3e7...0895, syrupUSDC/PYUSD) was dropped: only a
+    # single active day of data, too little for panel/clustering analysis.
 }
 
 DUNE_FILES = {
@@ -125,7 +121,6 @@ DUNE_FILES = {
     "W-14": "data/morpho/from_dune/morpho_w14_events.csv",
     "W-15": "data/morpho/from_dune/morpho_w15_events.csv",
     "W-16": "data/morpho/from_dune/morpho_w16_events.csv",
-    "W-17": "data/morpho/from_dune/morpho_w17_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}

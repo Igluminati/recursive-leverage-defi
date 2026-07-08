@@ -5,13 +5,13 @@ OUTPUT = "data/aave/daily_features.csv"
 EVENTS = "data/aave/panel_raw_events.csv"
 
 LIQUIDATION_THRESHOLD = {
+    "W-17": 0.92,
     "W-18": 0.92,
     "W-19": 0.92,
     "W-20": 0.92,
     "W-21": 0.92,
     "W-22": 0.92,
     "W-23": 0.92,
-    "W-24": 0.92,
 }
 
 
