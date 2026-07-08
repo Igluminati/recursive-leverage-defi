@@ -67,7 +67,8 @@ Dune CSVs  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd
 | W-14| 0xc05855cb... | Morpho   | sUSDS      | USDT   | Manual, active cycler (2026)      |
 | W-15| 0x59b6c75e... | Morpho   | syrupUSDC  | USDC   | Manual, short-lived (2026)        |
 | W-16| 0xf28dc8b6... | Morpho   | syrupUSDC  | USDC   | Manual, active cycler (2026)      |
-| W-17| 0xc5d6a3e7... | Morpho   | syrupUSDC  | PYUSD  | Manual, single-day open (2026)    |
+
+Former W-17 (0xc5d6a3e7..., syrupUSDC/PYUSD) was dropped: it had only a single active day of data, too little for panel/clustering analysis.
 
 ## Liquidation Thresholds (per Morpho market config)
 

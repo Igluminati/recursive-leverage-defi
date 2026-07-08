@@ -28,7 +28,7 @@ Computes risk metrics and behavioral features per whale per day. Outputs `daily_
 - **Token Identity** One-hot encoding of collateral and borrow token (`coll_*`, `debt_*`).
 
 **5. build_rates.py**
-Joins daily yield, supply rate and borrow rate series onto the features table and computes the carry spread. YBT APY comes from DeFiLlama (sUSDe pool); the sUSDe supply rate and the per-token variable borrow rates (USDT for W-6, USDe for W-7) come from Dune exports in `from_dune/`, matched by collateral and borrow token. Updates `daily_features.csv` in place.
+Joins daily yield, supply rate and borrow rate series onto the features table and computes the carry spread. YBT APY comes from DeFiLlama (sUSDe pool); the sUSDe supply rate and the per-token variable borrow rates (USDT for W-17, USDe for W-19/W-20/W-21) come from Dune exports in `from_dune/`, matched by collateral and borrow token. Updates `daily_features.csv` in place.
 
 - **YBT APY** Annualised yield on the collateral token (`ybt_apy`).
 - **Supply Rate** Annualised Aave supply rate earned on the collateral aToken (`supply_rate`).
@@ -48,13 +48,13 @@ Dune CSV  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd.
 
 | ID   | Address       | Protocol | Collateral | Borrow | Strategy |
 |------|---------------|----------|------------|--------|----------|
-| W-18 | 0x029469ca80e6c94436af010a369f54935a711080 | Aave v3  | sUSDe      | USDT   | E-Mode looper |
-| W-19 | 0x5D876B100Dd38D0701725035B97632553eaa1836 | Aave v3  | sUSDe      | USDC   | E-Mode looper |
-| W-20 | 0x5D876B100Dd38D0701725035B97632553eaa1836 | Aave v3  | sUSDe      | USDe   | E-Mode looper |
-| W-21 | 0x852689F44a4CA94a0E424EAd14A1Bb63719314db | Aave v3  | sUSDe      | USDe   | E-Mode looper |
-| W-22 | 0x24201ECD8b3f062215640B8c0740C4e892c091E3 | Aave v3  | sUSDe      | USDe   | E-Mode looper |
-| W-23 | 0x23270C161c42fFd0636fe786Cc7c518A0181234F | Aave v3  | sUSDe      | USDC   | E-Mode looper |
-| W-24 | 0xF3AdD38c51924221Dcf30767f69c6E57D77D9566 | Aave v3  | sUSDe      | USDC   | E-Mode looper |## Whales Tracked
+| W-17 | 0x029469ca80e6c94436af010a369f54935a711080 | Aave v3  | sUSDe      | USDT   | E-Mode looper |
+| W-18 | 0x5D876B100Dd38D0701725035B97632553eaa1836 | Aave v3  | sUSDe      | USDC   | E-Mode looper |
+| W-19 | 0x5D876B100Dd38D0701725035B97632553eaa1836 | Aave v3  | sUSDe      | USDe   | E-Mode looper |
+| W-20 | 0x852689F44a4CA94a0E424EAd14A1Bb63719314db | Aave v3  | sUSDe      | USDe   | E-Mode looper |
+| W-21 | 0x24201ECD8b3f062215640B8c0740C4e892c091E3 | Aave v3  | sUSDe      | USDe   | E-Mode looper |
+| W-22 | 0x23270C161c42fFd0636fe786Cc7c518A0181234F | Aave v3  | sUSDe      | USDC   | E-Mode looper |
+| W-23 | 0xF3AdD38c51924221Dcf30767f69c6E57D77D9566 | Aave v3  | sUSDe      | USDC   | E-Mode looper |
 
 
 
