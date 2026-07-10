@@ -3,10 +3,7 @@ import csv
 import pandas as pd
 from collections import Counter
 
-# Whale IDs W-17..W-23 (Aave). Note: the single-day Morpho whale formerly
-# labelled W-17 was dropped, so the Aave whales were renumbered down by one
-# (old W-18..W-24 -> new W-17..W-23). The raw Dune export filenames below keep
-# their original numbering for provenance.
+
 WHALES = {
     "W-17": {
         "address": "0x029469ca80e6c94436af010a369f54935a711080",
@@ -54,13 +51,13 @@ WHALES = {
 
 
 DUNE_FILES = {
-    "W-17": "data/aave/from_dune/aave_w18_events.csv",
-    "W-18": "data/aave/from_dune/aave_w19_events.csv",
-    "W-19": "data/aave/from_dune/aave_w20_events.csv",
-    "W-20": "data/aave/from_dune/aave_w21_events.csv",
-    "W-21": "data/aave/from_dune/aave_w22_events.csv",
-    "W-22": "data/aave/from_dune/aave_w23_events.csv",
-    "W-23": "data/aave/from_dune/aave_w24_events.csv",
+    "W-17": "data/aave/from_dune/aave_w17_events.csv",
+    "W-18": "data/aave/from_dune/aave_w18_events.csv",
+    "W-19": "data/aave/from_dune/aave_w19_events.csv",
+    "W-20": "data/aave/from_dune/aave_w20_events.csv",
+    "W-21": "data/aave/from_dune/aave_w21_events.csv",
+    "W-22": "data/aave/from_dune/aave_w22_events.csv",
+    "W-23": "data/aave/from_dune/aave_w23_events.csv",
 }
 
 COLLATERAL_EVENTS = {"supply", "withdraw"}
