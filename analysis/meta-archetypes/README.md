@@ -20,3 +20,7 @@ This Dune SQL query builds a full holder panel for a chosen yield-bearing stable
 | `YBS_in_morpho` | How much of the token this wallet currently has deposited as collateral in Morpho |
 | `YBS_in_aave` | Same, but for Aave. Always 0 unless the token is sUSDe |
 | `total_YBS_exposure` | The three columns above added together — the full picture of how much of the token this wallet effectively controls, wherever it's sitting |
+
+## Aave follow-up (issue #50)
+
+New notebook `aave_holder_analysis.ipynb` adds Aave alongside Morpho using the existing holder panel. Optional market-level SQL: `from_dune/aave_market_breakdown.sql`. Does not modify the Morpho notebook or Dune queries.
