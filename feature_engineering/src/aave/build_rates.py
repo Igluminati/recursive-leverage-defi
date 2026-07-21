@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 
 INPUT = "data/aave/daily_features.csv"
-RATE_COLUMNS = ["ybt_apy", "supply_rate", "borrow_rate", "carry_spread", "carry_spread_levered"]
+RATE_COLUMNS = ["ybt_apy", "borrow_rate", "carry_spread", "carry_spread_levered"]
 
 APY_POOLS = {
     "sUSDe": "66985a81-9c51-46ca-9977-42b4fe7bc6df",
@@ -13,10 +13,6 @@ BORROW_RATES = {
     "USDe": "data/aave/from_dune/aave_usde_borrow_rates.csv",
     "USDC": "data/aave/from_dune/aave_usdc_borrow_rates.csv",
 
-}
-
-SUPPLY_RATES = {
-    "sUSDe": "data/aave/from_dune/aave_susde_supply_rates.csv",
 }
 
 
@@ -44,25 +40,25 @@ def compute_ybt_apy(df):
 
 def main():
     df = pd.read_csv(INPUT, parse_dates=["date"])
-    df = df.drop(columns=[c for c in RATE_COLUMNS if c in df.columns])
+    df = df.drop(columns=[c for c in RATE_COLUMNS + ["supply_rate"] if c in df.columns])
     df = compute_ybt_apy(df)
 
     borrow = load_rates(BORROW_RATES, "borrow_rate", "borrow_token")
-    supply = load_rates(SUPPLY_RATES, "supply_rate", "collateral_token")
     df = df.merge(borrow, on=["date", "borrow_token"], how="left")
-    df = df.merge(supply, on=["date", "collateral_token"], how="left")
 
     keys = ["whale_id", "collateral_token", "borrow_token"]
     df = df.sort_values(keys + ["date"])
-    df[["ybt_apy", "supply_rate", "borrow_rate"]] = df.groupby(keys)[["ybt_apy", "supply_rate", "borrow_rate"]].ffill()
-    df["supply_rate"] = df["supply_rate"].fillna(0.0)
-    df["carry_spread"] = df["ybt_apy"] + df["supply_rate"] - df["borrow_rate"]
+    df[["ybt_apy", "borrow_rate"]] = df.groupby(keys)[["ybt_apy", "borrow_rate"]].ffill()
+
+    # A looper deposits sUSDe as collateral. The Aave v3 supply rate for sUSDe
+    # is effectively zero, so the carry spread is the YBS yield minus borrow cost.
+    df["carry_spread"] = df["ybt_apy"] - df["borrow_rate"]
     df["carry_spread_levered"] = df["carry_spread"] * df["loop_depth"]
     df = df.sort_values(["whale_id", "date"]).reset_index(drop=True)
 
     df.to_csv(INPUT, index=False)
     print(f"Saved {len(df)} rows to {INPUT}")
-    print(df.groupby("whale_id")[["ybt_apy", "supply_rate", "borrow_rate", "carry_spread"]].mean().round(3).to_string())
+    print(df.groupby("whale_id")[["ybt_apy", "borrow_rate", "carry_spread"]].mean().round(3).to_string())
 
 
 if __name__ == "__main__":
