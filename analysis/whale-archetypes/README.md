@@ -45,7 +45,7 @@ Baseline HDBSCAN on full panel (`min_cluster_size=15`, `min_samples=5`). Cluster
 - All 2,069 days assigned to nearest centroid; anything past the 95th percentile distance becomes `idle, outlier days`
 - Archetypes are named based on their profile
 - `strategist_type`: **pure** if at least 80% of days fall in one archetype, otherwise **mixed**
-- `moderate_sub`: splits the max leverage hold days into `moderate_light`(LTV under 0.6) and `moderate_core` (LTV at or above 0.6)
+- `moderate_sub`: splits the max leverage hold days into `moderate_light` (LTV under 0.75) and `moderate_core` (LTV at or above 0.75)
 
 ### Archetypes (2,069 days)
 
@@ -62,11 +62,11 @@ Baseline HDBSCAN on full panel (`min_cluster_size=15`, `min_samples=5`). Cluster
 
 | Type | Count | Examples |
 |------|-------|----------|
-| **pure** | 10 | W-2 (90%), W-12 (100%) in max leverage hold; W-7 (97%), W-9 (83%), W-15 (100%), W-19 (100%), W-21 (100%), W-22 (100%) in active looping; W-18 (95%), W-23 (92%) in stale, low leverage |
-| **mixed** | 13 | W-3 (64% active looping, spread across all four types); W-13 (spread across three types); also W-1, W-4, W-5, W-6, W-8, W-10, W-11, W-14, W-16, W-17, W-20 |
+| **pure** | 11 | W-2 (91%), W-12 (99%) in max leverage hold; W-7 (100%), W-9 (91%), W-15 (100%), W-19 (100%), W-21 (100%), W-22 (100%) in active looping; W-10 (94%), W-18 (86%), W-23 (90%) in stale, low leverage |
+| **mixed** | 12 | W-3 (66% active looping, spread across all four types); W-13 (spread across all four types); also W-1, W-4, W-5, W-6, W-8, W-11, W-14, W-16, W-17, W-20 |
 
 ## Key findings
 1. **Four behaviour modes, not 23 whale types.** The archetypes describe how whales loop, after balancing for how many days each whale appears in the data.
-2. **About half the whales are mixed strategists.** 10 of 23 are pure, meaning at least 80% of their days fall in one archetype. 13 of 23 are mixed. W-3 is a good example of a mixed whale, since it spreads across active looping, max leverage hold, and stale, low leverage days.
-3. **The max leverage hold cluster splits in practice.** Within this cluster, low LTV days (under 0.6) show different stress levels than high LTV days (0.6 or above). This is the split that the moderate_sub column captures.
-5. **Aave whales cluster with the more aggressive Morpho whales.** W-17 through W-23 mostly split between active looping and stale, low leverage days.
+2. **About half the whales are mixed strategists.** 11 of 23 are pure, meaning at least 80% of their days fall in one archetype. 12 of 23 are mixed. W-3 is a good example of a mixed whale, since it spreads across all four archetypes.
+3. **The max leverage hold cluster does not split.** Every one of its 245 days sits between LTV 0.93 and 0.96, so the `moderate_sub` split at 0.75 labels all of them `moderate_core` and no day is `moderate_light`. Under continuous leverage this archetype is a tight, uniformly extreme group rather than one with a light tail.
+4. **Aave whales cluster with the more aggressive Morpho whales.** W-17 through W-23 split between active looping and stale, low leverage days only.
