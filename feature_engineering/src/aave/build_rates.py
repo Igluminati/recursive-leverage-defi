@@ -53,7 +53,7 @@ def main():
     # A looper deposits sUSDe as collateral. The Aave v3 supply rate for sUSDe
     # is effectively zero, so the carry spread is the YBS yield minus borrow cost.
     df["carry_spread"] = df["ybt_apy"] - df["borrow_rate"]
-    df["carry_spread_levered"] = df["carry_spread"] * df["loop_depth"]
+    df["carry_spread_levered"] = df["carry_spread"] * df["leverage"]
     df = df.sort_values(["whale_id", "date"]).reset_index(drop=True)
 
     df.to_csv(INPUT, index=False)

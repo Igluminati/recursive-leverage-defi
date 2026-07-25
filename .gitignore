@@ -4,4 +4,8 @@ dev-notes/
 # Local Overleaf clone (its own git repo linked to git.overleaf.com) - kept local, never pushed to GitLab
 paper/overleaf_live/
 
+# Python bytecode
+__pycache__/
+*.py[cod]
+
 .idea
