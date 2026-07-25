@@ -90,7 +90,7 @@ Switching to a single fixed threshold (1.05) fixes this. Now a whale is only mar
 - `ltv_vol_7d`, `ltv_vol_14d`
 - `distance_to_liq`, `health_factor`
 - `carry_spread`, `carry_spread_levered`
-- `loop_depth`
+- `leverage`
 
 **Results (test set, class = rebalancing):**
 
@@ -101,7 +101,7 @@ Switching to a single fixed threshold (1.05) fixes this. Now a whale is only mar
 
 XGBoost improves on every measure. It catches slightly more rebalancing days (46 of 65 versus 45 of 65), makes fewer false alarms (65 versus 79), and has a stronger ROC-AUC. The improvement is modest but real and consistent across the board.
 
-**Feature importance (gain):** `ltv_vol_7d` (65.2) and `ltv_lag_7` (61.5) are the top two, followed by `ltv` (45.3), `ltv_vol_14d` (38.7), `ltv_lag_1` (34.0), and `ltv_lag_3` (33.6). `carry_spread_levered` (19.5), `carry_spread` (9.8), and `health_factor` (6.9) rank lowest. `distance_to_liq` and `loop_depth` were not used by any tree in the model.
+**Feature importance (gain):** `ltv_vol_7d` (65.2) and `ltv_lag_7` (61.5) are the top two, followed by `ltv` (45.3), `ltv_vol_14d` (38.7), `ltv_lag_1` (34.0), and `ltv_lag_3` (33.6). `carry_spread_levered` (19.5), `carry_spread` (9.8), and `health_factor` (6.9) rank lowest. `distance_to_liq` and `leverage` were not used by any tree in the model.
 
 **Key finding:** Rebalancing is driven by leverage and how it has changed over the past 7 to 14 days, not by a single snapshot value or by yield. Whales appear to react to a build up of risk over time, rather than acting on any single day's numbers.
 
@@ -128,13 +128,13 @@ XGBoost improves on every measure. It catches slightly more rebalancing days (46
 
 **Why this feature list took a few rounds to get right:**
 
-The first attempt included `ltv`, its lagged versions, `health_factor`, `distance_to_liq`, and `loop_depth`, and produced a ROC-AUC of 1.000, a clear sign of data leakage. Checking the raw values confirmed it: `ltv` above about 0.87 almost perfectly separated stressed from not stressed days, and `loop_depth` above 8 did the same. Both features were removed, since `health_factor` (which defines `stressed_state`) is built directly from `ltv`, and `loop_depth` turned out to be tied to the same underlying formula.
+The first attempt included `ltv`, its lagged versions, `health_factor`, `distance_to_liq`, and `leverage`, and produced a ROC-AUC of 1.000, a clear sign of data leakage. Checking the raw values confirmed it: `ltv` above about 0.87 almost perfectly separated stressed from not stressed days, and `leverage` above 8 (equivalent to LTV ≈ 0.875) did the same. Both features were removed, since `health_factor` (which defines `stressed_state`) is built directly from `ltv`, and `leverage` turned out to be tied to the same underlying formula.
 
 After removing those, a second, smaller leak was found. `collateral_balance` and `borrow_balance` let XGBoost reach a ROC-AUC of 0.993, a much bigger jump over Logistic Regression than normal. Trees can exploit hidden cutoffs in raw numbers more easily than a straight line model can, so a leak that Logistic Regression missed still showed up in XGBoost. Removing these two balance features brought XGBoost back down to a believable 0.977, close to Logistic Regression's 0.971, confirming the leak was gone.
 
 **Features excluded and why:**
 
-- `ltv`, `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`, `health_factor`, `distance_to_liq`, `loop_depth`: too closely tied to how `stressed_state` was defined
+- `ltv`, `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`, `health_factor`, `distance_to_liq`, `leverage`: too closely tied to how `stressed_state` was defined
 - `collateral_balance_usd`, `borrow_balance_usd`, `liquidation_threshold`: `ltv` is built directly from these
 - `collateral_balance`, `borrow_balance`: raw token amounts, but still let XGBoost find a near perfect shortcut, so they were dropped even though the leak here was smaller and less obvious
 - `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance`: these belong to the rebalancing target, not this one, and added no real value here
@@ -176,7 +176,7 @@ Model A predicts `rebalancing`, an action a whale actually takes, so features li
 **Why no leaky features overall?**
 
 - Model A excludes `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance`, since these are derived from the rebalancing column itself, which is the target
-- Model B excludes `ltv` and its lagged versions, `health_factor`, `distance_to_liq`, and `loop_depth`, since these were used to define `stressed_state`
+- Model B excludes `ltv` and its lagged versions, `health_factor`, `distance_to_liq`, and `leverage`, since these were used to define `stressed_state`
 - Model B also excludes `collateral_balance` and `borrow_balance`, since these let XGBoost find a near perfect shortcut even though the leak was less obvious than with `ltv`
 
 ---

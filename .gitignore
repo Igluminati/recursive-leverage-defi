@@ -4,6 +4,9 @@ dev-notes/
 # Local Overleaf clone (its own git repo linked to git.overleaf.com) - kept local, never pushed to GitLab
 paper/overleaf_live/
 
+# Stale Overleaf working copy; live source is paper/overleaf_live/ (synced via Overleaf)
+paper/overleaf_review/
+
 # Python bytecode
 __pycache__/
 *.py[cod]

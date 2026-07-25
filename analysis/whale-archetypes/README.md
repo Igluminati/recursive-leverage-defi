@@ -49,13 +49,14 @@ Baseline HDBSCAN on full panel (`min_cluster_size=15`, `min_samples=5`). Cluster
 
 ### Archetypes (2,069 days)
 
-| Archetype | Days | % | Mean LTV | Loop depth | Dist. to liq. | Days since rebal. | LTV lag 7 | Carry spread | Carry spread levered |
-|-----------|------|---|----------|------------|---------------|-------------------|-----------|--------------|-----------------------|
-| max leverage hold | 364 | 18 | 0.92 | 14.95 | 0.04 | 42.87 | 0.91 | 7.80 | 80.73 |
-| active looping | 868 | 42 | 0.75 | 7.88 | 0.16 | 2.84 | 0.73 | 7.30 | 40.61 |
-| stale, low leverage | 734 | 35 | 0.48 | 3.64 | 0.42 | 49.23 | 0.47 | 3.94 | 8.65 |
+| Archetype | Days | % | Mean LTV | Leverage | Dist. to liq. | Days since rebal. | LTV lag 7 | Carry spread | Carry spread levered |
+|-----------|------|---|----------|----------|---------------|-------------------|-----------|--------------|-----------------------|
+| stale, low leverage | 1032 | 50 | 0.52 | 3.97 | 0.37 | 49.72 | 0.53 | 0.95 | 5.25 |
+| active looping | 688 | 33 | 0.76 | 8.54 | 0.15 | 2.14 | 0.74 | 0.81 | 6.36 |
+| max leverage hold | 245 | 12 | 0.94 | 18.13 | 0.02 | 31.89 | 0.94 | 0.34 | 5.68 |
+| idle, outlier days | 104 | 5 | 0.29 | 2.90 | 0.65 | 6.80 | 0.55 | 0.16 | -3.58 |
 
-**RQ2 differentiation:** leverage level and loop depth first, then rebalancing cadence (`days_since_rebalance`, `rebal_freq_7d`).
+**RQ2 differentiation:** leverage level first, then rebalancing cadence (`days_since_rebalance`, `rebal_freq_7d`).
 
 ### Pure vs mixed strategists
 
