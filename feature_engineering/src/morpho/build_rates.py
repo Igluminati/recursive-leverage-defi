@@ -70,7 +70,7 @@ def main():
     # loan-token lenders, not to collateral depositors. The carry spread is
     # simply the YBS yield minus the borrow cost.
     df["carry_spread"] = df["ybt_apy"] - df["borrow_rate"]
-    df["carry_spread_levered"] = df["carry_spread"] * df["loop_depth"]
+    df["carry_spread_levered"] = df["carry_spread"] * df["leverage"]
     df = df.sort_values(["whale_id", "date"]).reset_index(drop=True)
 
     df.to_csv(INPUT, index=False)

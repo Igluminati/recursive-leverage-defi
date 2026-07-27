@@ -38,7 +38,7 @@ All USD-denominated, on Ethereum mainnet, active on **Aave v3** and **Morpho Blu
 |---|---|
 | **Data collection** | GraphQL (Aave v3, Morpho Blue), Dune Analytics SQL |
 | **Proof of concept** | Leverage bot script (with and without flashloans) |
-| **Feature engineering** | Wallet–token–day panel: LTV, loop depth, liquidation distance, carry spread, etc. |
+| **Feature engineering** | Wallet–token–day panel: LTV, leverage, liquidation distance, carry spread, etc. |
 | **Unsupervised ML** | HDBSCAN clustering + UMAP visualisation to find strategy archetypes |
 | **Supervised ML** | XGBoost classifier to predict stressed risk states, interpreted with SHAP |
 

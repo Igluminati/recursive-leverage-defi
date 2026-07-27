@@ -39,7 +39,7 @@ Joins daily yield, supply rate, and borrow rate series onto the features table a
 - **Supply Rate** Annualised protocol supply rate earned on the collateral, per Morpho market, sourced from the Morpho API (`supply_rate`).
 - **Borrow Rate** Annualised borrow rate paid on the debt token, per Morpho market (`borrow_rate`).
 - **Carry Spread** `ybt_apy + supply_rate - borrow_rate`, the per-loop spread (`carry_spread`).
-- **Levered Carry Spread** `carry_spread * loop_depth`, the spread scaled by recursion (`carry_spread_levered`).
+- **Levered Carry Spread** `carry_spread * leverage`, the spread scaled by position gearing (`carry_spread_levered`).
 
 ## Data Flow
 
@@ -90,7 +90,7 @@ Former W-17 (0xc5d6a3e7..., syrupUSDC/PYUSD) was dropped: it had only a single a
 | `health_factor`       | (Collateral USD × liquidation threshold) / borrow USD. Below 1.0 = liquidatable |
 | `distance_to_liq`     | Liquidation threshold − LTV. Positive = safe, negative = underwater         |
 | `rebalancing`         | 1 if any supply/withdraw/borrow/repay event on that day, else 0             |
-| `loop_depth`          | Leverage multiple `round(1 / (1 - ltv))`, capped at `1 / (1 - liquidation_threshold)`; 0 when there is no open debt |
+| `leverage`            | Continuous gearing `1 / (1 - ltv)`; 0 when there is no open debt                 |
 | `ltv_vol_7d`          | Rolling 7-day standard deviation of LTV                                     |
 | `ltv_vol_14d`         | Rolling 14-day standard deviation of LTV                                    |
 | `rebal_freq_7d`       | Rolling 7-day count of rebalancing events                                   |
@@ -102,4 +102,4 @@ Former W-17 (0xc5d6a3e7..., syrupUSDC/PYUSD) was dropped: it had only a single a
 | `supply_rate`         | Annualised protocol supply rate on the collateral, per Morpho market (Morpho GraphQL API) |
 | `borrow_rate`         | Annualised borrow rate on the debt token, per Morpho market                 |
 | `carry_spread`        | `ybt_apy + supply_rate − borrow_rate`, the per-loop carry spread            |
-| `carry_spread_levered`| `carry_spread × loop_depth`, the spread scaled by recursion                 |
+| `carry_spread_levered`| `carry_spread × leverage`, the spread scaled by position gearing            |
