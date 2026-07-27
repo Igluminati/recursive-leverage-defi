@@ -34,7 +34,7 @@ Joins daily yield, supply rate and borrow rate series onto the features table an
 - **Supply Rate** Annualised Aave supply rate earned on the collateral aToken (`supply_rate`).
 - **Borrow Rate** Annualised variable borrow rate paid on the debt token (`borrow_rate`).
 - **Carry Spread** `ybt_apy + supply_rate - borrow_rate`, the per-loop spread (`carry_spread`).
-- **Levered Carry Spread** `carry_spread * loop_depth`, the spread scaled by recursion (`carry_spread_levered`).
+- **Levered Carry Spread** `carry_spread * leverage`, the spread scaled by position gearing (`carry_spread_levered`).
 
 ## Data Flow
 
@@ -72,7 +72,7 @@ Dune CSV  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd.
 | `health_factor`   | Calculated from panel data. Below 1.0 = liquidatable                |
 | `distance_to_liq` | Liquidation threshold − LTV. Positive = safe, negative = underwater |
 | `rebalancing`     | 1 if any supply/withdraw/borrow/repay event on that day, else 0     |
-| `loop_depth`      | Leverage multiple `round(1 / (1 - ltv))`; 0 when there is no open debt           |
+| `leverage`        | Continuous gearing `1 / (1 - ltv)`; 0 when there is no open debt                |
 | `ltv_vol_7d`      | Rolling 7-day standard deviation of LTV                             |
 | `ltv_vol_14d`     | Rolling 14-day standard deviation of LTV                            |
 | `rebal_freq_7d`   | Rolling 7-day count of rebalancing events                           |
@@ -84,4 +84,4 @@ Dune CSV  →  panel_raw_events.csv  →  daily_panel.csv  →  daily_panel_usd.
 | `supply_rate`     | Annualised Aave supply rate earned on the collateral aToken         |
 | `borrow_rate`     | Annualised variable borrow rate on the debt token (USDT or USDe)    |
 | `carry_spread`    | `ybt_apy + supply_rate − borrow_rate`, the per-loop carry spread    |
-| `carry_spread_levered` | `carry_spread × loop_depth`, the spread scaled by recursion    |
+| `carry_spread_levered` | `carry_spread × leverage`, the spread scaled by position gearing |

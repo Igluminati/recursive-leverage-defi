@@ -48,7 +48,7 @@ Current features:
 - `liquidation_threshold` — per-whale liquidation threshold for its market
 - `health_factor` — `(collateral_usd × liquidation_threshold) / borrow_usd`; below 1.0 is liquidatable
 - `distance_to_liq` — `liquidation_threshold - ltv`, headroom before liquidation
-- `loop_depth` — leverage multiple `round(1 / (1 - ltv))`, capped at the max possible for the market's liquidation threshold; 0 when there is no open debt. This is derived from LTV rather than counted from borrow transactions — tx counting overcounts for whales doing frequent small rebalances rather than discrete recursive loops, while the LTV-derived figure reflects effective leverage regardless of how the position was built.
+- `leverage` — continuous gearing `1 / (1 - ltv)`; 0 when there is no open debt. This is derived from LTV rather than counted from borrow transactions — tx counting overcounts for whales doing frequent small rebalances rather than discrete recursive loops, while the LTV-derived figure reflects effective leverage regardless of how the position was built.
 - `ltv_vol_7d`, `ltv_vol_14d` — rolling standard deviation of LTV
 - `rebal_freq_7d`, `rebal_freq_30d` — rolling count of rebalancing events
 - `days_since_rebalance` — days since the last rebalancing event
@@ -65,7 +65,7 @@ Joins daily yield, supply rate and borrow rate series onto `daily_features.csv` 
 - `supply_rate` — annualised protocol supply rate on the collateral (Aave aToken rate; Morpho Blue per-market supply APY from the Morpho GraphQL API)
 - `borrow_rate` — annualised borrow rate on the debt token
 - `carry_spread` — `ybt_apy + supply_rate - borrow_rate`, the per-loop spread
-- `carry_spread_levered` — `carry_spread * loop_depth`, the spread scaled by recursion
+- `carry_spread_levered` — `carry_spread * leverage`, the spread scaled by position gearing
 
 Output: `data/<protocol>/daily_features.csv`
 

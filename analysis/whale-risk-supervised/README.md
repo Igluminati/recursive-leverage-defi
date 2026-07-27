@@ -90,18 +90,18 @@ Switching to a single fixed threshold (1.05) fixes this. Now a whale is only mar
 - `ltv_vol_7d`, `ltv_vol_14d`
 - `distance_to_liq`, `health_factor`
 - `carry_spread`, `carry_spread_levered`
-- `loop_depth`
+- `leverage`
 
 **Results (test set, class = rebalancing):**
 
 | Model | ROC-AUC | Recall | Precision | Accuracy |
 |---|---|---|---|---|
-| Logistic Regression | 0.828 | 0.69 | 0.36 | 78% |
-| XGBoost | 0.876 | 0.71 | 0.41 | 81% |
+| Logistic Regression | 0.820 | 0.66 | 0.37 | 78% |
+| XGBoost | 0.877 | 0.75 | 0.40 | 80% |
 
-XGBoost improves on every measure. It catches slightly more rebalancing days (46 of 65 versus 45 of 65), makes fewer false alarms (65 versus 79), and has a stronger ROC-AUC. The improvement is modest but real and consistent across the board.
+XGBoost improves on every measure. It catches clearly more rebalancing days (49 of 65 versus 43 of 65) for the cost of one extra false alarm (75 versus 74), and has a stronger ROC-AUC. Most of the gain is in recall.
 
-**Feature importance (gain):** `ltv_vol_7d` (65.2) and `ltv_lag_7` (61.5) are the top two, followed by `ltv` (45.3), `ltv_vol_14d` (38.7), `ltv_lag_1` (34.0), and `ltv_lag_3` (33.6). `carry_spread_levered` (19.5), `carry_spread` (9.8), and `health_factor` (6.9) rank lowest. `distance_to_liq` and `loop_depth` were not used by any tree in the model.
+**Feature importance (gain):** `ltv_vol_7d` (89.1) and `ltv_lag_7` (51.6) are the top two, followed by `ltv_lag_1` (47.3), `ltv` (38.7), `ltv_lag_3` (34.3), and `ltv_vol_14d` (27.4). Continuous `leverage` (27.2) now contributes, unlike the earlier rounded loop-depth version which no tree used. `carry_spread_levered` (14.5), `carry_spread` (13.0), and `distance_to_liq` (4.2) rank lowest. `health_factor` was not used by any tree in the model.
 
 **Key finding:** Rebalancing is driven by leverage and how it has changed over the past 7 to 14 days, not by a single snapshot value or by yield. Whales appear to react to a build up of risk over time, rather than acting on any single day's numbers.
 
@@ -114,27 +114,27 @@ XGBoost improves on every measure. It catches slightly more rebalancing days (46
 **What it does:**
 
 - Predicts whether a whale is in a stressed risk state on a given day, using the fixed threshold definition from notebook 01
-- Target: `stressed_state` (1,782 not stressed, 725 stressed, 28.9% stressed rate)
-- After dropping rows with missing features, the modeling set is 2,088 rows. A stratified 70/30 split gives 1,460 training rows and 628 test rows.
+- Target: `stressed_state` (1,781 not stressed, 725 stressed, 28.9% stressed rate)
+- After dropping rows with missing features, the modeling set is 2,091 rows. A stratified 70/30 split gives 1,463 training rows and 628 test rows.
 - Runs Logistic Regression as a baseline, then XGBoost, each at thresholds 0.5 and 0.3
 - Explains predictions with feature importance and SHAP
 
-**Features used (9):**
+**Features used (8):**
 
 - `ltv_vol_7d`, `ltv_vol_14d`
 - `carry_spread`, `carry_spread_levered`
-- `ybt_apy`, `borrow_rate`, `supply_rate`
+- `ybt_apy`, `borrow_rate`
 - `collateral_price`, `borrow_price`
 
 **Why this feature list took a few rounds to get right:**
 
-The first attempt included `ltv`, its lagged versions, `health_factor`, `distance_to_liq`, and `loop_depth`, and produced a ROC-AUC of 1.000, a clear sign of data leakage. Checking the raw values confirmed it: `ltv` above about 0.87 almost perfectly separated stressed from not stressed days, and `loop_depth` above 8 did the same. Both features were removed, since `health_factor` (which defines `stressed_state`) is built directly from `ltv`, and `loop_depth` turned out to be tied to the same underlying formula.
+The first attempt included `ltv`, its lagged versions, `health_factor`, `distance_to_liq`, and `leverage`, and produced a ROC-AUC of 1.000, a clear sign of data leakage. Checking the raw values confirmed it: `ltv` above about 0.87 almost perfectly separated stressed from not stressed days, and `leverage` above 8 (equivalent to LTV ≈ 0.875) did the same. Both features were removed, since `health_factor` (which defines `stressed_state`) is built directly from `ltv`, and `leverage` turned out to be tied to the same underlying formula.
 
-After removing those, a second, smaller leak was found. `collateral_balance` and `borrow_balance` let XGBoost reach a ROC-AUC of 0.993, a much bigger jump over Logistic Regression than normal. Trees can exploit hidden cutoffs in raw numbers more easily than a straight line model can, so a leak that Logistic Regression missed still showed up in XGBoost. Removing these two balance features brought XGBoost back down to a believable 0.977, close to Logistic Regression's 0.971, confirming the leak was gone.
+After removing those, a second, smaller leak was found. `collateral_balance` and `borrow_balance` let XGBoost reach a ROC-AUC of 0.993, a much bigger jump over Logistic Regression than normal. Trees can exploit hidden cutoffs in raw numbers more easily than a straight line model can, so a leak that Logistic Regression missed still showed up in XGBoost. Removing these two balance features brought the then-current model (which still included `supply_rate`) back to a believable ROC-AUC near 0.97. `supply_rate` was later dropped as well, since Aave sUSDe earn nearly all of their yield off-protocol; the current eight-feature model sits at ROC-AUC 0.943 (XGBoost) / 0.804 (Logistic Regression).
 
 **Features excluded and why:**
 
-- `ltv`, `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`, `health_factor`, `distance_to_liq`, `loop_depth`: too closely tied to how `stressed_state` was defined
+- `ltv`, `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`, `health_factor`, `distance_to_liq`, `leverage`: too closely tied to how `stressed_state` was defined
 - `collateral_balance_usd`, `borrow_balance_usd`, `liquidation_threshold`: `ltv` is built directly from these
 - `collateral_balance`, `borrow_balance`: raw token amounts, but still let XGBoost find a near perfect shortcut, so they were dropped even though the leak here was smaller and less obvious
 - `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance`: these belong to the rebalancing target, not this one, and added no real value here
@@ -144,16 +144,16 @@ After removing those, a second, smaller leak was found. `collateral_balance` and
 
 | Model | Threshold | ROC-AUC | Recall | Precision | Accuracy |
 |---|---|---|---|---|---|
-| Logistic Regression | 0.5 | 0.971 | 0.95 | 0.75 | 89% |
-| Logistic Regression | 0.3 | 0.971 | 0.98 | 0.67 | 84% |
-| XGBoost | 0.5 | 0.977 | 0.82 | 0.93 | 92% |
-| **XGBoost** | **0.3** | **0.977** | **0.90** | **0.81** | **90%** |
+| Logistic Regression | 0.5 | 0.804 | 0.78 | 0.50 | 68% |
+| Logistic Regression | 0.3 | 0.804 | 0.96 | 0.40 | 53% |
+| XGBoost | 0.5 | 0.943 | 0.73 | 0.81 | 86% |
+| **XGBoost** | **0.3** | **0.943** | **0.92** | **0.67** | **83%** |
 
-The chosen model is **XGBoost at threshold 0.3**: it catches 180 of 199 stressed days (missing only 19), with 42 false alarms out of 429 non-stressed days. This gives the best overall balance of catching real stress events while keeping false alarms reasonably low. If keeping false alarms as low as possible matters more than catching every event, XGBoost at the default threshold of 0.5 is the more conservative choice, with only 13 false alarms but a lower recall of 82%.
+The chosen model is **XGBoost at threshold 0.3**: it catches 184 of 199 stressed days (missing only 15), with 89 false alarms out of 429 non-stressed days. This gives the best overall balance of catching real stress events while keeping false alarms reasonably low. If keeping false alarms as low as possible matters more than catching every event, XGBoost at the default threshold of 0.5 is the more conservative choice, with only 35 false alarms but a lower recall of 73%.
 
-**Feature importance (gain):** `ybt_apy` (89.3) is the top feature, followed closely by `carry_spread` (84.5), `supply_rate` (82.8), and `carry_spread_levered` (71.8). Leverage volatility (`ltv_vol_7d` at 69.6, `ltv_vol_14d` at 41.3) and `borrow_rate` (40.2) matter too, but less. `collateral_price` (32.6) and `borrow_price` (28.2) matter the least, though they still contribute meaningfully. No single feature dominates, which is a good sign that this result is trustworthy.
+**Feature importance (gain):** `ybt_apy` (80.2) is the top feature, followed by `borrow_rate` (63.1), `ltv_vol_7d` (60.3), and `collateral_price` (58.8). `ltv_vol_14d` (52.5) and `carry_spread` (43.4) sit in the middle. `carry_spread_levered` (29.6) and `borrow_price` (25.4) matter the least, though they still contribute. No single feature dominates, which is a good sign that this result is trustworthy.
 
-**Key finding:** Stressed states are driven mainly by yield and interest rate changes, more than by leverage swings alone. A whale can be in a risky position even when its leverage looks stable, if the yield it earns drops too close to its borrowing cost. Leverage volatility still adds some signal, but it plays a smaller role than the yield and rate features here.
+**Key finding:** Stressed states are driven mainly by the yield environment (`ybt_apy`, `borrow_rate`), with leverage volatility and collateral price close behind. A whale can be in a risky position even when its leverage looks stable, if the yield it earns drops too close to its borrowing cost.
 
 **Output:** `predictions_stressed.csv`
 
@@ -167,7 +167,7 @@ Health factor has a fixed, real world meaning: 1.0 means liquidation. Comparing 
 
 **Why threshold 0.3 for XGBoost in Model B?**
 
-In a risk management context, missing a stressed day is usually more costly than a false alarm, since a missed stressed day could mean a whale gets liquidated. Lowering the decision threshold from 0.5 to 0.3 raises recall from 0.82 to 0.90, at the cost of some precision (0.93 down to 0.81).
+In a risk management context, missing a stressed day is usually more costly than a false alarm, since a missed stressed day could mean a whale gets liquidated. Lowering the decision threshold from 0.5 to 0.3 raises recall from 0.73 to 0.92, at the cost of some precision (0.81 down to 0.67).
 
 **Why so few features in Model B compared to Model A?**
 
@@ -176,7 +176,7 @@ Model A predicts `rebalancing`, an action a whale actually takes, so features li
 **Why no leaky features overall?**
 
 - Model A excludes `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance`, since these are derived from the rebalancing column itself, which is the target
-- Model B excludes `ltv` and its lagged versions, `health_factor`, `distance_to_liq`, and `loop_depth`, since these were used to define `stressed_state`
+- Model B excludes `ltv` and its lagged versions, `health_factor`, `distance_to_liq`, and `leverage`, since these were used to define `stressed_state`
 - Model B also excludes `collateral_balance` and `borrow_balance`, since these let XGBoost find a near perfect shortcut even though the leak was less obvious than with `ltv`
 
 ---
@@ -211,9 +211,9 @@ scikit-learn, xgboost, shap
 
 **Short answer: yes, they can, with strong predictive power.**
 
-**Rebalancing prediction:** On-chain state variables predict rebalancing events with a ROC-AUC of 0.876. The dominant predictors are leverage volatility (`ltv_vol_7d`) and leverage history (`ltv_lag_7`), not current risk metrics. Whales appear to respond to sustained leverage buildup over days, not to immediate danger signals.
+**Rebalancing prediction:** On-chain state variables predict rebalancing events with a ROC-AUC of 0.877. The dominant predictors are leverage volatility (`ltv_vol_7d`) and leverage history (`ltv_lag_7`), not current risk metrics. Whales appear to respond to sustained leverage buildup over days, not to immediate danger signals.
 
-**Stressed state prediction:** On-chain state variables predict stressed risk states with a ROC-AUC of 0.977 and recall of 0.90 at threshold 0.3. The dominant predictors are yield and rate related: `ybt_apy`, `carry_spread`, and `supply_rate`. Stress appears to be tied more closely to shrinking yield and rate conditions than to leverage alone.
+**Stressed state prediction:** On-chain state variables predict stressed risk states with a ROC-AUC of 0.943 and recall of 0.92 at threshold 0.3. The dominant predictors are yield and rate related: `ybt_apy` and `borrow_rate`, with leverage volatility close behind. Stress appears to be tied more closely to shrinking yield and rate conditions than to leverage alone.
 
 ---
 
@@ -232,11 +232,11 @@ Whales do not rebalance the moment things get risky. The strongest predictors of
 
 **Finding 2: Stress tracks yield and rate conditions closely**
 
-A whale is more likely to be flagged as stressed when its yield (`ybt_apy`), carry spread, and supply rate move against it, more so than when its leverage alone changes. This means stress in this dataset looks less like "leverage got too high" and more like "the position stopped being worth the risk."
+A whale is more likely to be flagged as stressed when its yield (`ybt_apy`) and borrow rate move against it, more so than when its leverage alone changes. This means stress in this dataset looks less like "leverage got too high" and more like "the position stopped being worth the risk."
 
 **Finding 3: Leverage volatility matters for both, but plays different roles**
 
-In the rebalancing model, `ltv_vol_7d` is the single most important feature. In the stressed model, it still matters but ranks behind the yield and rate features. This suggests volatility is more of a trigger for action (rebalancing) than a definition of danger (stress) in this dataset.
+In the rebalancing model, `ltv_vol_7d` is the single most important feature. In the stressed model, it still matters but ranks behind `ybt_apy` and `borrow_rate`. This suggests volatility is more of a trigger for action (rebalancing) than a definition of danger (stress) in this dataset.
 
 **The big picture:**
 

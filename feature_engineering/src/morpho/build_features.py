@@ -58,23 +58,23 @@ def compute_rebalancing(df, events):
     return df
 
 
-def compute_loop_depth(df):
+def compute_leverage(df):
     """
-    Loop depth = the leverage multiple of the position = round(1 / (1 - LTV)).
+    Leverage = 1 / (1 - LTV), the continuous gearing of the position.
 
-    Recursive looping (supply -> borrow -> resupply) stacks leverage that converges to
-    1 / (1 - LTV): at 80% LTV a fully looped position is ~5x, at 90% ~10x. We report
-    that multiple per day, so loop depth climbs as the whale levers up and falls as it
-    unwinds. Days with no debt (or no open position) are 0.
+    A position at 90% LTV is 10x levered; at 80% LTV it is 5x. We report the
+    continuous value rather than a rounded loop count because leverage is a
+    property of the position, not of how it was assembled: a single flashloan
+    can reach 10x in one transaction, whereas several manual loops may reach
+    only 2x. Days with no debt (or no open position) are 0.
 
     Example:
-        LTV 0.50 -> 1 / (1 - 0.50) = 2x  -> loop_depth 2
-        LTV 0.80 -> 1 / (1 - 0.80) = 5x  -> loop_depth 5
-        LTV 0.90 -> 1 / (1 - 0.90) = 10x -> loop_depth 10
+        LTV 0.50 -> 1 / (1 - 0.50) = 2.00x
+        LTV 0.80 -> 1 / (1 - 0.80) = 5.00x
+        LTV 0.90 -> 1 / (1 - 0.90) = 10.00x
     """
-    df["loop_depth"] = (1 / (1 - df["ltv"]).clip(lower=0.01)).round()
-    df.loc[df["ltv"].isna() | (df["borrow_balance_usd"] < 1), "loop_depth"] = 0
-    df["loop_depth"] = df["loop_depth"].astype(int)
+    df["leverage"] = 1 / (1 - df["ltv"]).clip(lower=0.01)
+    df.loc[df["ltv"].isna() | (df["borrow_balance_usd"] < 1), "leverage"] = 0.0
     return df
 
 
@@ -133,7 +133,7 @@ def main():
     df = compute_health_factor(df)
     df = compute_distance_to_liquidation(df)
     df = compute_rebalancing(df, events)
-    df = compute_loop_depth(df)
+    df = compute_leverage(df)
     df = compute_ltv_volatility(df)
     df = compute_rebalancing_frequency(df)
     df = compute_days_since_rebalance(df)
