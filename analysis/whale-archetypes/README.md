@@ -15,12 +15,23 @@ HDBSCAN clustering on whale-day behaviour for **RQ1** and **RQ2**.
 | 1 | `01_eda_panel.ipynb` | `panel_cluster_ready.csv` |
 | 2 | `02_hdbscan_clustering.ipynb` | baseline exploration |
 | 3 | `03_balanced_clustering.ipynb` | `panel_archetypes.csv` |
+| 4 | `04_ltv_history_krzys.ipynb` | `output/whale_markets_ltv_summary.csv`, `output/ltv_history_W-*.png` |
 
 ```bash
 cd analysis/whale-archetypes
 uv sync
 uv run jupyter lab
 ```
+
+---
+
+## Outputs (`output/`)
+
+Committed figures and tables for review / paper reuse:
+
+- `whale_markets_ltv_summary.csv` — per-whale protocol, market (`collateral / borrow`), and open-debt LTV distribution (min, quartiles, median, max, mean)
+- `ltv_history_W-*.png` — zoomed historical LTV charts for a representative whale set (W-12, W-1, W-3, W-11, W-17, W-5), with LLTV reference line
+- Unsupervised paper PNGs: `archetype-mix-by-whale.png`, `ltv-over-time.png`, `mean-ltv-per-whale.png`, `pca-baseline-pair.png`, `pca-by-archetype.png`, `pca-by-baseline-cluster.png`, `pca-by-whale.png`, `stale-vs-stress.png`, `stress-by-archetype.png`
 
 ---
 
