@@ -1,0 +1,49 @@
+# Matplotlib style reverse-engineered from the chart PDFs/PNGs in
+# arXiv:2506.01462v4 (figures/*.pdf, figures/*.png). Colors were sampled
+# directly from rendered pixels, not guessed.
+#
+# Usage:
+#   import matplotlib.pyplot as plt
+#   plt.style.use("paper_style.mplstyle")
+
+font.family:        serif
+font.serif:         Times New Roman, DejaVu Serif, cmr10
+mathtext.fontset:   cm
+font.size:          10
+
+figure.facecolor:   white
+axes.facecolor:     white
+savefig.facecolor:  white
+savefig.dpi:        300
+
+axes.spines.top:    False
+axes.spines.right:  False
+axes.edgecolor:     333333
+axes.linewidth:     0.8
+axes.axisbelow:     True
+axes.titlesize:     11
+axes.labelsize:     10
+
+axes.grid:          True
+axes.grid.axis:     y
+grid.color:         cccccc
+grid.linestyle:     --
+grid.linewidth:     0.6
+grid.alpha:         0.7
+
+xtick.color:        333333
+ytick.color:        333333
+xtick.direction:    out
+ytick.direction:    out
+xtick.labelsize:    9
+ytick.labelsize:    9
+
+legend.frameon:     False
+legend.fontsize:    9
+
+lines.linewidth:    1.8
+patch.linewidth:    0
+
+# 5-way categorical cycle (color + linestyle, so series stay distinguishable
+# in grayscale/colorblind viewing): Arbitrum, Base, Optimism, Unichain, ZKsync
+axes.prop_cycle: cycler('color', ['66B8EC', 'DC5244', 'B7B7B7', 'DD5491', '6EBC6B']) + cycler('linestyle', ['-', '--', '-.', '-', ':'])
