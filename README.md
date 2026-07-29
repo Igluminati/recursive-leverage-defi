@@ -27,8 +27,8 @@ All USD-denominated, on Ethereum mainnet, active on **Aave v3** and **Morpho Blu
 ## Research Questions
 
 1. What looping/leverage strategy patterns exist among large holders?
-2. What risk characteristics (leverage depth, collateral buffers, rebalancing) separate these patterns?
-3. Can on-chain data predict short-term rebalancing and stressed positions?
+2. What risk characteristics (leverage depth, collateral buffers, risk rebalancing) separate these patterns?
+3. Can on-chain data predict short-term risk rebalancing and stressed positions?
 
 ---
 
@@ -78,7 +78,7 @@ uv run jupyter lab      # open that folder's notebooks
 | Folder | Notebooks |
 |--------|-----------|
 | `analysis/whale-archetypes/` | `01_eda_panel.ipynb`, `02_hdbscan_clustering.ipynb`, `03_balanced_clustering.ipynb` |
-| `analysis/whale-risk-supervised/` | `01_eda_stress_threshold.ipynb`, `02_model_rebalancing.ipynb`, `03_model_stressed.ipynb` |
+| `analysis/whale-risk-supervised/` | `01_eda_stress_threshold.ipynb`, `02_model_risk_rebalance.ipynb`, `03_model_stressed.ipynb` |
 | `analysis/meta-archetypes/` | `meta_archetypes.ipynb` |
 
 Examples:
