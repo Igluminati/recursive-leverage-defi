@@ -132,30 +132,25 @@ def compute_action_deltas(df):
 
 
 def compute_activity_class(df):
-    """
-    Sort each active day into one of four mutually exclusive classes.
-
-    `risk_rebalance` is the union of the two classes that move leverage and is
-    the signal to use wherever risk management is the question; the broad
-    `position_activity` flag counts capital moves and dust alongside it.
-
-    The first observed day of a position has no counterfactual to compare
-    against, so it is classified from what was opened: a levered position is a
-    loop being built, a collateral-only deposit is capital arriving.
-    """
     active = df["position_activity"] == 1
     leverage_moved = df["delta_leverage_rel"].abs() >= LEVERAGE_MATERIAL
     capital_moved = (df["delta_equity_rel"].abs() >= EQUITY_MATERIAL) & (
         df["delta_equity_usd"].abs() >= EQUITY_DUST_USD
     )
 
+    # First day of a position has no prior day to compare, so classify from what was opened
     opening = active & df["delta_leverage_rel"].isna()
     levered_open = opening & (df["borrow_balance_usd"] >= 1)
 
+    # Touch day where leverage changed a lot, but net capital (equity) basically didn't
     df["leverage_adjust"] = (active & leverage_moved & ~capital_moved).astype(int)
+    # Touch day where equity moved a lot, but leverage basically didn't (or unlevered open)
     df["capital_flow"] = ((active & capital_moved & ~leverage_moved) | (opening & ~levered_open)).astype(int)
+    # Touch day where both leverage and equity moved a lot (or levered open)
     df["levered_scaling"] = ((active & leverage_moved & capital_moved) | levered_open).astype(int)
+    # Touch day where neither move was material
     df["minor_activity"] = (active & ~opening & ~leverage_moved & ~capital_moved).astype(int)
+    # Either leverage_adjust or levered_scaling (leverage moved)
     df["risk_rebalance"] = (df["leverage_adjust"] | df["levered_scaling"]).astype(int)
     return df
 
