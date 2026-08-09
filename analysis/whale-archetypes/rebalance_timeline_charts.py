@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 PANEL = Path(__file__).resolve().parents[2] / "feature_engineering" / "data" / "daily_features_all.csv"
+ARCHETYPES = Path(__file__).resolve().parent / "panel_archetypes.csv"
 OUT_ALL = Path(__file__).resolve().parent / "output" / "rebalance_timelines"
 OUT_PAPER = Path(__file__).resolve().parent / "output"
 
@@ -46,7 +47,22 @@ def episodes(dates: pd.Series) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
     return spans
 
 
-def plot_whale(g: pd.DataFrame, wid: str, out_path: Path) -> bool:
+def mix_title(wid: str, mixes: pd.DataFrame) -> str:
+    """'W-16 | active looping 45.9% ... ' with the dominant archetype in bold."""
+    g = mixes[mixes["whale_id"] == wid]
+    if g.empty:
+        return wid
+    pct = (100 * g["cluster_name"].value_counts(normalize=True)).round(1)
+    parts = []
+    for i, (name, p) in enumerate(pct.items()):
+        label = f"{name} {p}%"
+        if i == 0:  # dominant archetype
+            label = r"$\bf{" + label.replace(" ", r"\ ").replace("%", r"\%").replace(",", ",\!") + "}$"
+        parts.append(label)
+    return f"{wid}  |  " + "  ·  ".join(parts)
+
+
+def plot_whale(g: pd.DataFrame, wid: str, out_path: Path, mixes: pd.DataFrame) -> bool:
     # Keep LTV == 0 rows so wind-downs to zero stay visible, but require a
     # position context (any debt over the panel).
     plot = g[g["ltv"].notna()].copy()
@@ -87,9 +103,20 @@ def plot_whale(g: pd.DataFrame, wid: str, out_path: Path) -> bool:
         label="risk-rebalance day",
     )
 
+    # Full-unwind days: all debt repaid and collateral withdrawn, so LTV is
+    # undefined and the line cannot reach the shaded period. Mark explicitly.
+    closes = g[(g["risk_rebalance"] == 1) & (g["ltv"].isna())]
+    if not closes.empty:
+        ax.scatter(
+            closes["date"], [ymin + 0.04 * (ymax - ymin)] * len(closes),
+            marker="v", color="#55A868", edgecolor="#2E5C38", s=42, zorder=3,
+            label="position closed (full unwind)",
+        )
+
     if lltv is not None:
         ax.axhline(lltv, color="#C44E52", linewidth=1.2, linestyle="--", label=f"LLTV {lltv:.3f}")
 
+    ax.set_title(mix_title(wid, mixes), loc="left", fontsize=10)
     ax.set_ylim(ymin, ymax)
     ax.set_ylabel("LTV")
     locator = mdates.AutoDateLocator()
@@ -104,13 +131,14 @@ def plot_whale(g: pd.DataFrame, wid: str, out_path: Path) -> bool:
 
 def main() -> None:
     df = pd.read_csv(PANEL, parse_dates=["date"])
+    mixes = pd.read_csv(ARCHETYPES, usecols=["whale_id", "cluster_name"])
     OUT_ALL.mkdir(parents=True, exist_ok=True)
 
     made = []
     for wid, g in df.groupby("whale_id"):
         g = g.sort_values("date")
         out = OUT_ALL / f"ltv_rebalance_timeline_{wid}.png"
-        if plot_whale(g, wid, out):
+        if plot_whale(g, wid, out, mixes):
             made.append(wid)
 
     for wid in PAPER_WHALES:
