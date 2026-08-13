@@ -19,11 +19,13 @@ Computes risk metrics and behavioral features per whale per day. Outputs `daily_
 - **LTV** `borrow_balance_usd / collateral_balance_usd`
 - **Health Factor** `(collateral_balance_usd * liquidation_threshold) / borrow_balance_usd`, where liquidation threshold is hardcoded per market from Morpho's market config. A health factor below 1.0 means the position is eligible for liquidation.
 - **Distance to Liquidation** `liquidation_threshold - ltv` how many percentage points of LTV buffer remain before liquidation. Positive = safe, negative = underwater.
-- **Rebalancing** Binary flag (0/1) indicating whether any supply, withdraw, borrow, or repay event occurred on a given day. 
+- **Position Activity** Binary flag (0/1) indicating whether any supply, withdraw, borrow, or repay event occurred on a given day. This is a record of contact with the position, not of rebalancing: adding capital, moving capital between protocols and adjusting risk all look identical here, which is why active days are split further below.
 - **Loop Depth** The leverage multiple of the position, `round(1 / (1 - ltv))`, capped at the max possible for the market's liquidation threshold (`1 / (1 - liquidation_threshold)`). Recursive looping (supply, borrow, resupply) stacks leverage that converges to `1 / (1 - ltv)`, so this is roughly how many times the position is geared (90% LTV is about 10x). 0 when there is no open debt. This is derived from LTV rather than counted from raw borrow transactions: counting unique borrow tx hashes overcounts for whales that do frequent small rebalances (e.g. W-3, which executed 170 borrow events) rather than discrete recursive loops, while the LTV-derived figure reflects the position's effective leverage regardless of how it was built. Verified against W-1's event history, where the LTV-derived depth matched the actual count of supply→borrow loop transactions on its main build day.
 - **LTV Volatility** Rolling 7-day and 14-day standard deviation of LTV (`ltv_vol_7d`, `ltv_vol_14d`).
-- **Rebalancing Frequency** Rolling 7-day and 30-day count of rebalancing events (`rebal_freq_7d`, `rebal_freq_30d`).
-- **Days Since Last Rebalance** Days since the last rebalancing event within the open position (`days_since_rebalance`).
+- **Action Deltas** What the whale did on a given day, with price movement removed. Yesterday's token balances marked at today's prices give `ltv_cf`, the position they would have held had they done nothing; the gap between that counterfactual and the actual position is the action. `delta_leverage_rel` is the signed relative change in leverage, `delta_equity_usd` the signed net capital flow, and `delta_equity_rel` the same as a share of prior equity. On days with no events these are exactly zero, since panel balances only move on events.
+- **Activity Class** Each active day falls into exactly one of `leverage_adjust` (leverage moved, capital flat), `capital_flow` (capital moved, leverage flat), `levered_scaling` (both moved: a loop being built or unwound) or `minor_activity` (neither moved materially). `risk_rebalance` is the union of the two leverage classes and is the signal to use wherever risk management is the question.
+- **Activity Frequency** Rolling 7-day and 30-day counts (`activity_freq_7d/30d`, `risk_rebal_freq_7d/30d`, `capital_flow_freq_7d/30d`).
+- **Days Since Activity** Days since the last active day and since the last risk rebalance (`days_since_activity`, `days_since_risk_rebalance`).
 - **Lagged LTV** LTV at t-1, t-3, t-7 days (`ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`).
 - **Token Identity** One-hot encoding of collateral and borrow token (`coll_*`, `debt_*`).
 
@@ -39,7 +41,7 @@ Joins daily yield, supply rate, and borrow rate series onto the features table a
 - **Supply Rate** Annualised protocol supply rate earned on the collateral, per Morpho market, sourced from the Morpho API (`supply_rate`).
 - **Borrow Rate** Annualised borrow rate paid on the debt token, per Morpho market (`borrow_rate`).
 - **Carry Spread** `ybt_apy + supply_rate - borrow_rate`, the per-loop spread (`carry_spread`).
-- **Levered Carry Spread** `carry_spread * leverage`, the spread scaled by position gearing (`carry_spread_levered`).
+- **Levered Carry Spread** `carry_spread * leverage`, the spread scaled by position leverage (`carry_spread_levered`).
 
 ## Data Flow
 
@@ -89,17 +91,28 @@ Former W-17 (0xc5d6a3e7..., syrupUSDC/PYUSD) was dropped: it had only a single a
 | `ltv`                 | Borrow balance USD / collateral balance USD                                 |
 | `health_factor`       | (Collateral USD × liquidation threshold) / borrow USD. Below 1.0 = liquidatable |
 | `distance_to_liq`     | Liquidation threshold − LTV. Positive = safe, negative = underwater         |
-| `rebalancing`         | 1 if any supply/withdraw/borrow/repay event on that day, else 0             |
-| `leverage`            | Continuous gearing `1 / (1 - ltv)`; 0 when there is no open debt                 |
+| `position_activity`   | 1 if any supply/withdraw/borrow/repay event on that day, else 0             |
+| `leverage`            | Continuous leverage `1 / (1 - ltv)`; 0 when there is no open debt                 |
+| `ltv_cf`              | LTV the position would have had with no action, i.e. yesterday's token balances at today's prices |
+| `delta_leverage_rel`  | Signed relative change in leverage against `ltv_cf`                          |
+| `delta_equity_usd`    | Signed net capital flow, valued at today's prices                           |
+| `delta_equity_rel`    | `delta_equity_usd` as a share of prior equity                               |
+| `leverage_adjust`     | Active day where leverage moved materially and capital did not               |
+| `capital_flow`        | Active day where capital moved materially and leverage did not               |
+| `levered_scaling`     | Active day where both moved: a loop being built or unwound                  |
+| `minor_activity`      | Active day where neither moved materially                                   |
+| `risk_rebalance`      | `leverage_adjust` or `levered_scaling`; the risk-management signal          |
 | `ltv_vol_7d`          | Rolling 7-day standard deviation of LTV                                     |
 | `ltv_vol_14d`         | Rolling 14-day standard deviation of LTV                                    |
-| `rebal_freq_7d`       | Rolling 7-day count of rebalancing events                                   |
-| `rebal_freq_30d`      | Rolling 30-day count of rebalancing events                                  |
-| `days_since_rebalance`| Days since the last rebalancing event within the open position              |
+| `activity_freq_7d` / `activity_freq_30d` | Rolling count of active days                             |
+| `risk_rebal_freq_7d` / `risk_rebal_freq_30d` | Rolling count of risk rebalances                       |
+| `capital_flow_freq_7d` / `capital_flow_freq_30d` | Rolling count of capital moves                   |
+| `days_since_activity` | Days since the last active day within the open position                     |
+| `days_since_risk_rebalance` | Days since the last risk rebalance within the open position           |
 | `ltv_lag_1` / `ltv_lag_3` / `ltv_lag_7` | LTV lagged by 1, 3, and 7 days (temporal context for RQ3) |
 | `coll_*` / `debt_*`   | One-hot identity of collateral and borrow token (market)                    |
 | `ybt_apy`             | Annualised yield on the collateral token (DefiLlama pool)                   |
 | `supply_rate`         | Annualised protocol supply rate on the collateral, per Morpho market (Morpho GraphQL API) |
 | `borrow_rate`         | Annualised borrow rate on the debt token, per Morpho market                 |
 | `carry_spread`        | `ybt_apy + supply_rate − borrow_rate`, the per-loop carry spread            |
-| `carry_spread_levered`| `carry_spread × leverage`, the spread scaled by position gearing            |
+| `carry_spread_levered`| `carry_spread × leverage`, the spread scaled by position leverage            |

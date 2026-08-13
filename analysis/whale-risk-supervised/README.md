@@ -1,6 +1,8 @@
 # Whale Risk Supervised Learning
 
-This folder contains three Jupyter notebooks that build supervised ML models to answer **RQ3**: can on-chain state variables predict short-horizon rebalancing events and stressed risk states?
+This folder contains three Jupyter notebooks that build supervised ML models to answer **RQ3**: can on-chain state variables predict short-horizon risk rebalancing and stressed risk states?
+
+Model A predicts `risk_rebalance`, the days on which a whale actually changes its leverage. It deliberately does not predict the broader `position_activity` flag, which counts any supply, withdraw, borrow or repay and so mixes capital movements and dust in with risk management. See the feature engineering README for how the two are separated.
 
 ---
 
@@ -67,21 +69,22 @@ Switching to a single fixed threshold (1.05) fixes this. Now a whale is only mar
 - Whales split into three broad patterns: a small group with high average safety buffers but occasional risky dips (W-11, W-16, W-3, W-13), a group of steady conservative operators (W-4, W-5, W-8, W-23), and a couple of whales that sit close to liquidation almost constantly (W-1, W-12).
 - W-1 and W-12 are stressed on more than 95% of their days under the fixed threshold.
 - Several whales, including W-4, W-5, W-8, W-11, W-16, W-18, W-22, and W-23, are never stressed under this threshold.
-- Overall **stressed rate: 28.9%** (725 of 2,506 days). Overall **rebalancing rate: 14.8%** (371 of 2,506 days).
+- Overall **stressed rate: 28.9%** (725 of 2,506 days). Whales are **active on 14.8%** of days but **risk-rebalance on only 7.2%**, so roughly half of what the old broad flag counted as rebalancing was capital movement or dust.
+- The ranking of "active" whales changes completely once the two are separated. W-3 is active on 47.5% of its days but risk-rebalances on 3.6%, and W-11 on 15.8% against 3.5%. The genuinely active risk managers are W-16 (44.7%), W-15 (44.4%), W-9 (29.2%) and W-14 (24.6%).
 
 **Output:** `whale_features_labeled.csv`
 
 ---
 
-### `02_model_rebalancing.ipynb`, Model A: Predict Rebalancing
+### `02_model_risk_rebalance.ipynb`, Model A: Predict a Leverage Change
 
 **What it does:**
 
-- Predicts whether a whale will rebalance on a given day
-- Target: `rebalancing` (0 or 1, already in the data)
+- Predicts whether a whale will change its leverage on a given day
+- Target: `risk_rebalance` (0 or 1, already in the data)
 - After dropping rows with missing features, the modeling set is 1,475 rows. A stratified 70/30 split gives 1,032 training rows and 443 test rows.
 - Runs Logistic Regression (`class_weight='balanced'`) as a baseline, then XGBoost
-- Uses `scale_pos_weight = 5.83` to handle the class imbalance
+- Uses `scale_pos_weight = 16.49` to handle the class imbalance
 - Explains predictions with feature importance and SHAP
 
 **Features used (11):**
@@ -92,20 +95,22 @@ Switching to a single fixed threshold (1.05) fixes this. Now a whale is only mar
 - `carry_spread`, `carry_spread_levered`
 - `leverage`
 
-**Results (test set, class = rebalancing):**
+**Results (test set, class = risk rebalance, 26 of 443 days):**
 
 | Model | ROC-AUC | Recall | Precision | Accuracy |
 |---|---|---|---|---|
-| Logistic Regression | 0.820 | 0.66 | 0.37 | 78% |
-| XGBoost | 0.877 | 0.75 | 0.40 | 80% |
+| Logistic Regression | 0.881 | 0.62 | 0.42 | 93% |
+| XGBoost | 0.901 | 0.81 | 0.26 | 85% |
 
-XGBoost improves on every measure. It catches clearly more rebalancing days (49 of 65 versus 43 of 65) for the cost of one extra false alarm (75 versus 74), and has a stronger ROC-AUC. Most of the gain is in recall.
+Accuracy is not informative at a 5.9% base rate, since always predicting zero would score 94%. XGBoost catches 21 of 26 risk rebalances against the baseline's 16, but raises 61 false alarms against 22. It is the better choice when missing an event is worse than raising an alert, and the baseline is better calibrated otherwise. With only 26 positive test days, the gap between the two should not be over-read.
 
-**Feature importance (gain):** `ltv_vol_7d` (89.1) and `ltv_lag_7` (51.6) are the top two, followed by `ltv_lag_1` (47.3), `ltv` (38.7), `ltv_lag_3` (34.3), and `ltv_vol_14d` (27.4). Continuous `leverage` (27.2) now contributes, unlike the earlier rounded loop-depth version which no tree used. `carry_spread_levered` (14.5), `carry_spread` (13.0), and `distance_to_liq` (4.2) rank lowest. `health_factor` was not used by any tree in the model.
+Both models separate the classes better than the old broad-activity target did (ROC-AUC 0.820 / 0.877), even though the new target is rarer and harder. Predicting deliberate risk management is more learnable than predicting whether a whale will touch the position for any reason at all.
 
-**Key finding:** Rebalancing is driven by leverage and how it has changed over the past 7 to 14 days, not by a single snapshot value or by yield. Whales appear to react to a build up of risk over time, rather than acting on any single day's numbers.
+**Feature importance (weight):** `ltv_vol_7d` (52) dominates, followed by `carry_spread_levered` (18), `ltv_vol_14d` (17), `carry_spread` (14) and `ltv_lag_1` (13). `ltv_lag_7` (7), `ltv_lag_3` (5), `distance_to_liq` (3), `leverage` (2) and `ltv` (1) are used sparingly, and `health_factor` was not used by any tree.
 
-**Output:** `predictions_rebalancing.csv`
+**Key finding:** Risk rebalances are driven by how much the leverage ratio has moved recently, with carry economics second. The rise of the carry features under this target is the clearest evidence that the split was worth making: the old flag mixed in capital movements that carry economics do not explain.
+
+**Output:** `predictions_risk_rebalance.csv`
 
 ---
 
@@ -137,8 +142,8 @@ After removing those, a second, smaller leak was found. `collateral_balance` and
 - `ltv`, `ltv_lag_1`, `ltv_lag_3`, `ltv_lag_7`, `health_factor`, `distance_to_liq`, `leverage`: too closely tied to how `stressed_state` was defined
 - `collateral_balance_usd`, `borrow_balance_usd`, `liquidation_threshold`: `ltv` is built directly from these
 - `collateral_balance`, `borrow_balance`: raw token amounts, but still let XGBoost find a near perfect shortcut, so they were dropped even though the leak here was smaller and less obvious
-- `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance`: these belong to the rebalancing target, not this one, and added no real value here
-- `rebalancing`: a separate target variable, not a feature
+- `risk_rebal_freq_7d`, `risk_rebal_freq_30d`, `days_since_risk_rebalance`, `activity_freq_*`: these belong to Model A's target, not this one, and added no real value here
+- `position_activity`, `risk_rebalance`, `capital_flow`, `levered_scaling`, `minor_activity`: activity labels, not features for this model
 
 **Results (test set, class = stressed):**
 
@@ -171,11 +176,11 @@ In a risk management context, missing a stressed day is usually more costly than
 
 **Why so few features in Model B compared to Model A?**
 
-Model A predicts `rebalancing`, an action a whale actually takes, so features like `ltv`, `health_factor`, and `distance_to_liq` are safe to use there. Model B predicts `stressed_state`, which was built directly from `health_factor`, so any feature too closely tied to that formula would let the model see the answer instead of learning real patterns. This is why Model B's feature list looks different, even though both notebooks start from the same dataset.
+Model A predicts `risk_rebalance`, an action a whale actually takes, so features like `ltv`, `health_factor`, and `distance_to_liq` are safe to use there. Model B predicts `stressed_state`, which was built directly from `health_factor`, so any feature too closely tied to that formula would let the model see the answer instead of learning real patterns. This is why Model B's feature list looks different, even though both notebooks start from the same dataset.
 
 **Why no leaky features overall?**
 
-- Model A excludes `rebal_freq_7d`, `rebal_freq_30d`, `days_since_rebalance`, since these are derived from the rebalancing column itself, which is the target
+- Model A excludes `risk_rebal_freq_7d`, `risk_rebal_freq_30d`, `days_since_risk_rebalance`, `delta_leverage_rel` and `delta_equity_rel`, since these are derived from the target itself
 - Model B excludes `ltv` and its lagged versions, `health_factor`, `distance_to_liq`, and `leverage`, since these were used to define `stressed_state`
 - Model B also excludes `collateral_balance` and `borrow_balance`, since these let XGBoost find a near perfect shortcut even though the leak was less obvious than with `ltv`
 
@@ -190,10 +195,10 @@ daily_features_all.csv
        |
 whale_features_labeled.csv
        |                    |
-02_model_rebalancing     03_model_stressed
+02_model_risk_rebalance  03_model_stressed
        |                    |
-predictions_rebalancing  predictions_stressed
-.csv                     .csv
+predictions_leverage_    predictions_stressed
+touch.csv                .csv
 ```
 
 ---
@@ -207,11 +212,11 @@ scikit-learn, xgboost, shap
 
 ---
 
-## RQ3: To what extent can on-chain state variables predict short-horizon rebalancing events and stressed risk states?
+## RQ3: To what extent can on-chain state variables predict short-horizon risk rebalancing and stressed risk states?
 
 **Short answer: yes, they can, with strong predictive power.**
 
-**Rebalancing prediction:** On-chain state variables predict rebalancing events with a ROC-AUC of 0.877. The dominant predictors are leverage volatility (`ltv_vol_7d`) and leverage history (`ltv_lag_7`), not current risk metrics. Whales appear to respond to sustained leverage buildup over days, not to immediate danger signals.
+**Risk rebalance prediction:** On-chain state variables predict a risk rebalance with a ROC-AUC of 0.901. The dominant predictor is leverage volatility (`ltv_vol_7d`), with carry economics (`carry_spread_levered`, `carry_spread`) second. Whales appear to respond to sustained movement in leverage and to whether the position is still earning, not to immediate danger signals.
 
 **Stressed state prediction:** On-chain state variables predict stressed risk states with a ROC-AUC of 0.943 and recall of 0.92 at threshold 0.3. The dominant predictors are yield and rate related: `ybt_apy` and `borrow_rate`, with leverage volatility close behind. Stress appears to be tied more closely to shrinking yield and rate conditions than to leverage alone.
 
@@ -223,12 +228,16 @@ scikit-learn, xgboost, shap
 
 The two phenomena are driven by different mechanisms.
 
-- Rebalancing is reactive to the past: accumulated leverage history and volatility over 7 to 14 days
+- Risk rebalancing is reactive to the past: leverage volatility over 7 to 14 days, plus the carry the position is earning
 - Stress is reactive to yield and rate conditions: how much a whale is earning relative to what it is paying to borrow
 
-**Finding 1: Rebalancing is a delayed response**
+**Finding 1: Risk rebalancing is a delayed response**
 
-Whales do not rebalance the moment things get risky. The strongest predictors of rebalancing are leverage volatility over the past week and leverage from a week ago, not today's leverage level alone. This suggests rebalancing is a considered decision, not a panic reaction.
+Whales do not risk-rebalance the moment things get risky. The strongest predictor is leverage volatility over the past week, not today's leverage level. This suggests risk rebalancing is a considered decision, not a panic reaction.
+
+**Finding 1b: Most position activity is not risk management**
+
+Whales touch their positions on 14.8% of days but risk-rebalance on only 7.2%. Separating the two changes who counts as an active manager: W-3 is active on 47.5% of its days and risk-rebalances on 3.6%. Modelling the broad flag was therefore partly modelling capital movements and dust, and the carry features only surface as predictors once those are removed.
 
 **Finding 2: Stress tracks yield and rate conditions closely**
 
@@ -236,8 +245,8 @@ A whale is more likely to be flagged as stressed when its yield (`ybt_apy`) and 
 
 **Finding 3: Leverage volatility matters for both, but plays different roles**
 
-In the rebalancing model, `ltv_vol_7d` is the single most important feature. In the stressed model, it still matters but ranks behind `ybt_apy` and `borrow_rate`. This suggests volatility is more of a trigger for action (rebalancing) than a definition of danger (stress) in this dataset.
+In the risk rebalance model, `ltv_vol_7d` is the single most important feature by a wide margin. In the stressed model, it still matters but ranks behind `ybt_apy` and `borrow_rate`. This suggests volatility is more of a trigger for action (risk rebalancing) than a definition of danger (stress) in this dataset.
 
 **The big picture:**
 
-Whales seem to watch leverage build up over time before deciding to rebalance, while their stressed state on any given day is shaped more by yield and rate conditions than by leverage swings alone. On-chain data captures both of these patterns clearly, which means DeFi risk behavior can likely be monitored, and to some extent predicted, using only publicly available blockchain data.
+Whales seem to watch leverage move over time before deciding to risk-rebalance, while their stressed state on any given day is shaped more by yield and rate conditions than by leverage swings alone. On-chain data captures both of these patterns clearly, which means DeFi risk behavior can likely be monitored, and to some extent predicted, using only publicly available blockchain data.

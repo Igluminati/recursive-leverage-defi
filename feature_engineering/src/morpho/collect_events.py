@@ -100,8 +100,6 @@ WHALES = {
         "collateral": "syrupUSDC",
         "borrow": "USDC",
     },
-    # Former W-17 (0xc5d6a3e7...0895, syrupUSDC/PYUSD) was dropped: only a
-    # single active day of data, too little for panel/clustering analysis.
 }
 
 DUNE_FILES = {
