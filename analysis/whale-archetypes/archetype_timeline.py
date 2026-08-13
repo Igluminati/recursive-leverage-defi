@@ -1,9 +1,12 @@
-"""Chronological archetype timeline per whale (call follow-up, 2026-08-06).
+"""Chronological archetype timeline per looper (call follow-up, 2026-08-06).
 
-The archetype-mix bars show how much of each behaviour a whale has, but not
-when. This chart shows, for every whale, which archetype each active day
-belongs to over calendar time, so strategy evolution (e.g. W-11 stepping
+The archetype-mix bars show how much of each behaviour a looper has, but not
+when. This chart shows, for every looper, which archetype each active day
+belongs to over calendar time, so strategy evolution (e.g. L-11 stepping
 down from looping into stale low leverage) is visible directly.
+
+The panel still carries the historical ``whale_id`` column; it is mapped to
+the L- ids the paper uses at plot time.
 """
 
 from pathlib import Path
@@ -37,7 +40,8 @@ def spans(dates: pd.Series) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
 
 def main() -> None:
     df = pd.read_csv(PANEL, parse_dates=["date"])
-    whales = sorted(df["whale_id"].unique(), key=lambda w: int(w.split("-")[1]))
+    df["looper_id"] = df["whale_id"].str.replace("W-", "L-", regex=False)
+    loopers = sorted(df["looper_id"].unique(), key=lambda w: int(w.split("-")[1]))
 
     plt.rcParams.update({
         "figure.facecolor": "white",
@@ -46,8 +50,8 @@ def main() -> None:
     })
     fig, ax = plt.subplots(figsize=(11, 8))
 
-    for i, wid in enumerate(whales):
-        g = df[df["whale_id"] == wid]
+    for i, lid in enumerate(loopers):
+        g = df[df["looper_id"] == lid]
         for name, color in COLORS.items():
             for start, end in spans(g.loc[g["cluster_name"] == name, "date"]):
                 ax.barh(
@@ -59,8 +63,8 @@ def main() -> None:
                     linewidth=0,
                 )
 
-    ax.set_yticks(range(len(whales)))
-    ax.set_yticklabels(whales)
+    ax.set_yticks(range(len(loopers)))
+    ax.set_yticklabels(loopers)
     ax.invert_yaxis()
     ax.grid(axis="x", color="#dddddd", linewidth=0.6)
     ax.set_axisbelow(True)

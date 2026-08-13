@@ -1,13 +1,15 @@
 """Chronological LTV charts with risk-rebalance periods (issue #82).
 
-The archetype-mix bars show how much of each behaviour a whale has, but not
+The archetype-mix bars show how much of each behaviour a looper has, but not
 when it happens. These charts plot the zoomed LTV trajectory (same style as
 the #68 LTV history charts) and overlay the risk-rebalance days, with runs
 of consecutive days shaded as one period, so multi-day campaigns such as
-W-16's March 2026 wind-down are visible as blocks rather than dots.
+L-16's March 2026 wind-down are visible as blocks rather than dots.
 
-Charts for every whale land in output/rebalance_timelines/; the
-representative set for the paper is copied into output/.
+Charts for every looper land in output/rebalance_timelines/; the
+representative set for the paper is copied into output/. The panel still
+carries the historical ``whale_id`` column; it is mapped to the L- ids the
+paper uses at plot time.
 """
 
 import shutil
@@ -22,8 +24,8 @@ ARCHETYPES = Path(__file__).resolve().parent / "panel_archetypes.csv"
 OUT_ALL = Path(__file__).resolve().parent / "output" / "rebalance_timelines"
 OUT_PAPER = Path(__file__).resolve().parent / "output"
 
-# Whales with clearly visible multi-day periods, per the 2026-08-06 call.
-PAPER_WHALES = ["W-16", "W-14", "W-1", "W-11"]
+# Loopers with clearly visible multi-day periods, per the 2026-08-06 call.
+PAPER_LOOPERS = ["L-16", "L-14", "L-1", "L-11"]
 
 plt.rcParams.update({
     "figure.facecolor": "white",
@@ -47,11 +49,11 @@ def episodes(dates: pd.Series) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
     return spans
 
 
-def mix_title(wid: str, mixes: pd.DataFrame) -> str:
-    """'W-16 | active looping 45.9% ... ' with the dominant archetype in bold."""
-    g = mixes[mixes["whale_id"] == wid]
+def mix_title(lid: str, mixes: pd.DataFrame) -> str:
+    """'L-16 | active looping 45.9% ... ' with the dominant archetype in bold."""
+    g = mixes[mixes["looper_id"] == lid]
     if g.empty:
-        return wid
+        return lid
     pct = (100 * g["cluster_name"].value_counts(normalize=True)).round(1)
     parts = []
     for i, (name, p) in enumerate(pct.items()):
@@ -59,10 +61,10 @@ def mix_title(wid: str, mixes: pd.DataFrame) -> str:
         if i == 0:  # dominant archetype
             label = r"$\bf{" + label.replace(" ", r"\ ").replace("%", r"\%").replace(",", ",\!") + "}$"
         parts.append(label)
-    return f"{wid}  |  " + "  ·  ".join(parts)
+    return f"{lid}  |  " + "  ·  ".join(parts)
 
 
-def plot_whale(g: pd.DataFrame, wid: str, out_path: Path, mixes: pd.DataFrame) -> bool:
+def plot_looper(g: pd.DataFrame, lid: str, out_path: Path, mixes: pd.DataFrame) -> bool:
     # Keep LTV == 0 rows so wind-downs to zero stay visible, but require a
     # position context (any debt over the panel).
     plot = g[g["ltv"].notna()].copy()
@@ -116,7 +118,7 @@ def plot_whale(g: pd.DataFrame, wid: str, out_path: Path, mixes: pd.DataFrame) -
     if lltv is not None:
         ax.axhline(lltv, color="#C44E52", linewidth=1.2, linestyle="--", label=f"LLTV {lltv:.3f}")
 
-    ax.set_title(mix_title(wid, mixes), loc="left", fontsize=10)
+    ax.set_title(mix_title(lid, mixes), loc="left", fontsize=10)
     ax.set_ylim(ymin, ymax)
     ax.set_ylabel("LTV")
     locator = mdates.AutoDateLocator()
@@ -131,23 +133,25 @@ def plot_whale(g: pd.DataFrame, wid: str, out_path: Path, mixes: pd.DataFrame) -
 
 def main() -> None:
     df = pd.read_csv(PANEL, parse_dates=["date"])
+    df["looper_id"] = df["whale_id"].str.replace("W-", "L-", regex=False)
     mixes = pd.read_csv(ARCHETYPES, usecols=["whale_id", "cluster_name"])
+    mixes["looper_id"] = mixes["whale_id"].str.replace("W-", "L-", regex=False)
     OUT_ALL.mkdir(parents=True, exist_ok=True)
 
     made = []
-    for wid, g in df.groupby("whale_id"):
+    for lid, g in df.groupby("looper_id"):
         g = g.sort_values("date")
-        out = OUT_ALL / f"ltv_rebalance_timeline_{wid}.png"
-        if plot_whale(g, wid, out, mixes):
-            made.append(wid)
+        out = OUT_ALL / f"ltv_rebalance_timeline_{lid}.png"
+        if plot_looper(g, lid, out, mixes):
+            made.append(lid)
 
-    for wid in PAPER_WHALES:
-        src = OUT_ALL / f"ltv_rebalance_timeline_{wid}.png"
+    for lid in PAPER_LOOPERS:
+        src = OUT_ALL / f"ltv_rebalance_timeline_{lid}.png"
         if src.exists():
             shutil.copy(src, OUT_PAPER / src.name)
 
-    print(f"Charts written for {len(made)} whales in {OUT_ALL}")
-    print(f"Paper set copied to {OUT_PAPER}: {', '.join(PAPER_WHALES)}")
+    print(f"Charts written for {len(made)} loopers in {OUT_ALL}")
+    print(f"Paper set copied to {OUT_PAPER}: {', '.join(PAPER_LOOPERS)}")
 
 
 if __name__ == "__main__":
