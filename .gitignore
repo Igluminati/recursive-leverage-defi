@@ -7,6 +7,12 @@ paper/overleaf_live/
 # Stale Overleaf working copy; live source is paper/overleaf_live/ (synced via Overleaf)
 paper/overleaf_review/
 
+# Local Overleaf clone (never push LaTeX working trees to the public repo)
+paper/overleaf/
+
+# Presentation prep (scripts, deck exports); not part of the public code release
+presentation/
+
 # Python bytecode
 __pycache__/
 *.py[cod]
