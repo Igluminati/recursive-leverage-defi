@@ -4,6 +4,8 @@
 **Authors:** Igli Kristo, Dawid Rymarczyk  
 **Supervisor:** Prof. Claudio J. Tessone · **Co-Supervisor:** Krzysztof M. Gogol
 
+**Final report (PDF):** [Recursive Leverage in Yield-Bearing Stablecoins — Proof of Concept and Empirical Analysis](paper/Recursive_Leverage_in_Yield_Bearing_Stablecoins__Proof_of_Concept_and_Empirical_Analysis.pdf)
+
 ---
 
 ## What This Project Is About
