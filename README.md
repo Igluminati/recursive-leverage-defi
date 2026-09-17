@@ -4,15 +4,19 @@
 **Authors:** Igli Kristo, Dawid Rymarczyk  
 **Supervisor:** Prof. Claudio J. Tessone · **Co-Supervisor:** Krzysztof M. Gogol
 
-**Final report (PDF):** [Recursive Leverage in Yield-Bearing Stablecoins — Proof of Concept and Empirical Analysis](paper/Recursive_Leverage_in_Yield_Bearing_Stablecoins__Proof_of_Concept_and_Empirical_Analysis.pdf)
+**Final report (PDF):** [Recursive Leverage in Yield-Bearing Stablecoins: Proof of Concept and Empirical Analysis](paper/Recursive_Leverage_in_Yield_Bearing_Stablecoins__Proof_of_Concept_and_Empirical_Analysis.pdf)
+
+Public repository for the MSc project code, analysis notebooks, and the submitted write-up.
 
 ---
 
 ## What This Project Is About
 
-Some large crypto wallets use a strategy called **looping**: deposit a yield-bearing token as collateral, borrow a stablecoin against it, buy more of the same token, and repeat. This amplifies returns — but also liquidation risk.
+Some large crypto wallets use a strategy called **looping**: deposit a yield-bearing token as collateral, borrow a stablecoin against it, buy more of the same token, and repeat. That amplifies yield but also liquidation risk.
 
-This project studies who does this, how, and whether on-chain data can predict when things get risky.
+We study who does this on Ethereum, whether a small set of shared strategy patterns shows up in on-chain data, how those patterns differ in risk management, and whether position state can flag stressful days before they happen.
+
+**Highlights:** HDBSCAN/UMAP for looper archetypes; XGBoost with SHAP for supervised risk signals (ROC-AUC 0.90 and 0.98 on held-out evaluation in the report).
 
 ---
 
@@ -40,7 +44,7 @@ All USD-denominated, on Ethereum mainnet, active on **Aave v3** and **Morpho Blu
 |---|---|
 | **Data collection** | GraphQL (Aave v3, Morpho Blue), Dune Analytics SQL |
 | **Proof of concept** | Leverage bot script (with and without flashloans) |
-| **Feature engineering** | Wallet–token–day panel: LTV, leverage, liquidation distance, carry spread, etc. |
+| **Feature engineering** | Wallet-token-day panel: LTV, leverage, liquidation distance, carry spread, etc. |
 | **Unsupervised ML** | HDBSCAN clustering + UMAP visualisation to find strategy archetypes |
 | **Supervised ML** | XGBoost classifier to predict stressed risk states, interpreted with SHAP |
 
@@ -56,7 +60,7 @@ All USD-denominated, on Ethereum mainnet, active on **Aave v3** and **Morpho Blu
 │   ├── whale-archetypes/
 │   ├── whale-risk-supervised/
 │   └── meta-archetypes/
-└── paper/                 # LaTeX write-up (Overleaf sync)
+└── paper/                 # Final report PDF (LaTeX source lives on Overleaf)
 ```
 
 ---
@@ -73,7 +77,7 @@ uv sync                 # create the .venv from pyproject.toml
 uv run jupyter lab      # open that folder's notebooks
 ```
 
-`uv run` uses that folder's own `.venv` — no `source .venv/bin/activate` needed.
+`uv run` uses that folder's own `.venv`; you do not need `source .venv/bin/activate`.
 
 ### Notebooks
 
@@ -98,4 +102,3 @@ uv run jupyter nbconvert --to notebook --execute --inplace <notebook>.ipynb
 ```
 
 Don't have uv? Install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`.
-
