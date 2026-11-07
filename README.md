@@ -6,6 +6,8 @@
 
 **Final report (PDF):** [Recursive Leverage in Yield-Bearing Stablecoins: Proof of Concept and Empirical Analysis](paper/Recursive_Leverage_in_Yield_Bearing_Stablecoins__Proof_of_Concept_and_Empirical_Analysis.pdf)
 
+**Grade:** 5.50 / 6. The findings were published as *How Whales Loop Yield-Bearing Stablecoins, Step by Step* (K. Gogol, D. Rymarczyk, I. Kristo), Stablewatch industry research report, October 2026.
+
 Public repository for the MSc project code, analysis notebooks, and the submitted write-up.
 
 ---
@@ -16,7 +18,16 @@ Some large crypto wallets use a strategy called **looping**: deposit a yield-bea
 
 We study who does this on Ethereum, whether a small set of shared strategy patterns shows up in on-chain data, how those patterns differ in risk management, and whether position state can flag stressful days before they happen.
 
-**Highlights:** HDBSCAN/UMAP for looper archetypes; XGBoost with SHAP for supervised risk signals (ROC-AUC 0.90 and 0.98 on held-out evaluation in the report).
+---
+
+## Key Findings
+
+- **Data:** a daily panel of the 23 largest leveraged holders (2,506 holder-days), built from on-chain events, prices, borrow rates and health factors.
+- **Risk is concentrated:** in the high-risk bands, 13% of Aave positions hold 97% of the value.
+- **Small moves, large exposure:** no liquidations happened in the sample, but a 3 to 5% price fall would raise liquidatable Aave collateral from about $40M to over $510M.
+- **Three behaviours:** HDBSCAN on 12 standardised features finds low-leverage holding, active looping, and holding at max leverage near liquidation. The first clustering mostly grouped days from the same wallet, which was corrected before treating clusters as strategies.
+- **Prediction:** XGBoost flags stressed days (ROC-AUC 0.977) and risk rebalancing (0.901). SHAP shows stress is driven by yield and borrow rates, not by leverage itself.
+- **Leakage check:** the first stressed-day model scored a perfect 1.000 because of target leakage. Removing the leaking features gave the 0.977 above.
 
 ---
 
